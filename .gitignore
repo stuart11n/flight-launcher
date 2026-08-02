@@ -39,6 +39,7 @@ BundleArtifacts/
 *.appxupload
 
 # Publish output
+artifacts/
 publish/
 *.pubxml
 PublishScripts/

@@ -68,13 +68,26 @@
                 Text="" />
         </StackPanel>
 
-        <SelectorBar
-            x:Name="ModeSelector"
-            Grid.Row="1"
-            SelectionChanged="ModeSelector_SelectionChanged">
-            <SelectorBarItem x:Name="FlightTab" Text="Flight" Tag="flight" />
-            <SelectorBarItem x:Name="RacingTab" Text="Racing" Tag="racing" />
-        </SelectorBar>
+        <Grid Grid.Row="1" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <SelectorBar
+                x:Name="ModeSelector"
+                SelectionChanged="ModeSelector_SelectionChanged">
+                <SelectorBarItem x:Name="FlightTab" Text="Flight" Tag="flight" />
+                <SelectorBarItem x:Name="RacingTab" Text="Racing" Tag="racing" />
+            </SelectorBar>
+
+            <Button
+                Grid.Column="1"
+                Content="Rename"
+                VerticalAlignment="Center"
+                Click="RenameMode_Click"
+                ToolTipService.ToolTip="Rename the selected profile tab" />
+        </Grid>
 
         <Grid Grid.Row="2" ColumnSpacing="12">
             <Grid.ColumnDefinitions>

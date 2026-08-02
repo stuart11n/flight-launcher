@@ -135,25 +135,25 @@ public sealed class TaskRunner
                 }
             case BuiltinAction.MaxCpuPerformance:
                 {
+                    // Same command both ways: powercfg /s <guid>
+                    var powercfg = Path.Combine(Environment.SystemDirectory, "powercfg.exe");
                     if (starting)
                     {
-                        RunProcess("powercfg", $"/s {HighPerfGuid}");
-                        return $"START ACTION [{task.Name}] power plan High performance";
+                        RunProcess(powercfg, $"/s {HighPerfGuid}");
+                        return $"START ACTION [{task.Name}] powercfg /s High performance ({HighPerfGuid})";
                     }
                     else
                     {
-                        RunProcess("powercfg", $"/s {BalancedGuid}");
-                        return $"STOP ACTION [{task.Name}] power plan Balanced";
+                        RunProcess(powercfg, $"/s {BalancedGuid}");
+                        return $"STOP ACTION [{task.Name}] powercfg /s Balanced ({BalancedGuid})";
                     }
                 }
             case BuiltinAction.MaxGpuPerformance:
                 {
-                    if (!starting)
-                    {
-                        return $"SKIP [{task.Name}] GPU power limit has no stop action";
-                    }
-
-                    var watts = task.GpuPowerLimitWatts <= 0 ? 352 : task.GpuPowerLimitWatts;
+                    // Same command both ways: nvidia-smi -pl <watts>
+                    var watts = starting
+                        ? (task.GpuPowerLimitWatts <= 0 ? 352 : task.GpuPowerLimitWatts)
+                        : (task.GpuStopPowerLimitWatts <= 0 ? 200 : task.GpuStopPowerLimitWatts);
                     var exit = RunElevatedProcess("nvidia-smi", $"-pl {watts}");
                     if (exit is null)
                     {
@@ -165,7 +165,9 @@ public sealed class TaskRunner
                         throw new InvalidOperationException($"nvidia-smi exited with code {exit}.");
                     }
 
-                    return $"START ACTION [{task.Name}] nvidia-smi -pl {watts} (exit {exit})";
+                    return starting
+                        ? $"START ACTION [{task.Name}] nvidia-smi -pl {watts} (exit {exit})"
+                        : $"STOP ACTION [{task.Name}] nvidia-smi -pl {watts} (exit {exit})";
                 }
             default:
                 await Task.CompletedTask.ConfigureAwait(false);

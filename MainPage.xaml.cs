@@ -48,6 +48,7 @@ public sealed partial class MainPage : Page
         }
 
         SelectModeTab(_settings.ActiveModeId);
+        ApplyModeTabLabels();
         LoadActiveModeTasks();
         _loading = false;
         var mode = _settings.GetActiveMode();
@@ -111,6 +112,65 @@ public sealed partial class MainPage : Page
         ModeSelector.SelectedItem = string.Equals(modeId, AppSettings.RacingModeId, StringComparison.OrdinalIgnoreCase)
             ? RacingTab
             : FlightTab;
+    }
+
+    private void ApplyModeTabLabels()
+    {
+        _settings.EnsureModes();
+        foreach (var mode in _settings.Modes)
+        {
+            var tab = string.Equals(mode.Id, AppSettings.RacingModeId, StringComparison.OrdinalIgnoreCase)
+                ? RacingTab
+                : string.Equals(mode.Id, AppSettings.FlightModeId, StringComparison.OrdinalIgnoreCase)
+                    ? FlightTab
+                    : null;
+            if (tab is null)
+            {
+                continue;
+            }
+
+            tab.Text = string.IsNullOrWhiteSpace(mode.Name) ? mode.Id : mode.Name;
+            tab.Tag = mode.Id;
+        }
+    }
+
+    private async void RenameMode_Click(object sender, RoutedEventArgs e)
+    {
+        var mode = _settings.GetActiveMode();
+        var box = new TextBox
+        {
+            Header = "Profile name",
+            Text = mode.Name,
+            MaxLength = 40
+        };
+
+        var dialog = new ContentDialog
+        {
+            Title = "Rename profile",
+            Content = box,
+            PrimaryButtonText = "Save",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = XamlRoot
+        };
+
+        var result = await dialog.ShowAsync();
+        if (result != ContentDialogResult.Primary)
+        {
+            return;
+        }
+
+        var name = box.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            AppendLog("Rename cancelled: name cannot be empty");
+            return;
+        }
+
+        mode.Name = name;
+        ApplyModeTabLabels();
+        Persist();
+        AppendLog($"Renamed profile to '{mode.Name}'");
     }
 
     private void LoadActiveModeTasks()

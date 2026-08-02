@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore .\FlightLauncher.csproj -p:Platform=x64
+
+      - name: Build
+        run: dotnet build .\FlightLauncher.csproj -c Release -p:Platform=x64 --no-restore
+
+      - name: Publish self-contained (win-x64)
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\publish.ps1 -Configuration Release
+
+      - name: Upload publish folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlightLauncher-win-x64
+          path: artifacts/publish/win-x64
+          if-no-files-found: error
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\FlightLauncher.iss
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlightLauncherSetup
+          path: artifacts/installer/FlightLauncherSetup.exe
+          if-no-files-found: error

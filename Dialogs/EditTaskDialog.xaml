@@ -73,10 +73,17 @@
                 </ComboBox>
                 <NumberBox
                     x:Name="GpuWattsBox"
-                    Header="GPU power limit (watts)"
+                    Header="GPU start power limit (watts)"
                     Minimum="50"
                     Maximum="1000"
                     Value="352"
+                    SpinButtonPlacementMode="Inline" />
+                <NumberBox
+                    x:Name="GpuStopWattsBox"
+                    Header="GPU stop power limit (watts)"
+                    Minimum="50"
+                    Maximum="1000"
+                    Value="200"
                     SpinButtonPlacementMode="Inline" />
                 <TextBlock
                     x:Name="BuiltinHelpText"

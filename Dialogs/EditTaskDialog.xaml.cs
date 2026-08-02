@@ -53,6 +53,7 @@ public sealed partial class EditTaskDialog : ContentDialog
         StopUrlBox.Text = _entry.StopUrl;
         SelectComboByTag(BuiltinBox, _entry.BuiltinAction.ToString());
         GpuWattsBox.Value = _entry.GpuPowerLimitWatts <= 0 ? 352 : _entry.GpuPowerLimitWatts;
+        GpuStopWattsBox.Value = _entry.GpuStopPowerLimitWatts <= 0 ? 200 : _entry.GpuStopPowerLimitWatts;
         UpdateKillForceEnabled();
         UpdateStopFields();
         UpdateBuiltinHelp();
@@ -87,6 +88,7 @@ public sealed partial class EditTaskDialog : ContentDialog
         _entry.StopUrl = StopUrlBox.Text.Trim();
         _entry.BuiltinAction = ParseEnum(GetSelectedTag(BuiltinBox), BuiltinAction.None);
         _entry.GpuPowerLimitWatts = (int)(double.IsNaN(GpuWattsBox.Value) ? 352 : GpuWattsBox.Value);
+        _entry.GpuStopPowerLimitWatts = (int)(double.IsNaN(GpuStopWattsBox.Value) ? 200 : GpuStopWattsBox.Value);
 
         if (_entry.Kind == TaskKind.Builtin && string.IsNullOrWhiteSpace(_entry.Name))
         {
@@ -193,9 +195,9 @@ public sealed partial class EditTaskDialog : ContentDialog
                 BuiltinAction.DisableRealtimeScanning =>
                     "Start action: turn Defender realtime OFF (DisableRealtimeMonitoring=true)\nStop action: turn Defender realtime ON (DisableRealtimeMonitoring=false)\nIf start fails, disable Tamper Protection first.",
                 BuiltinAction.MaxCpuPerformance =>
-                    "Start action: High performance power plan\nStop action: Balanced power plan",
+                    "Start action: powercfg /s High performance\nStop action: powercfg /s Balanced",
                 BuiltinAction.MaxGpuPerformance =>
-                    "Start action: nvidia-smi -pl (watts below)\nStop action: none",
+                    "Start action: nvidia-smi -pl (start watts)\nStop action: nvidia-smi -pl (stop watts)",
                 _ => "Start / stop actions depend on the system option."
             };
             TestStartButton.Content = "Test start action";
@@ -236,6 +238,7 @@ public sealed partial class EditTaskDialog : ContentDialog
     {
         var action = ParseEnum(GetSelectedTag(BuiltinBox), BuiltinAction.None);
         GpuWattsBox.Visibility = action == BuiltinAction.MaxGpuPerformance ? Visibility.Visible : Visibility.Collapsed;
+        GpuStopWattsBox.Visibility = action == BuiltinAction.MaxGpuPerformance ? Visibility.Visible : Visibility.Collapsed;
         BuiltinHelpText.Text = action switch
         {
             BuiltinAction.DisableFirewall =>
@@ -243,9 +246,9 @@ public sealed partial class EditTaskDialog : ContentDialog
             BuiltinAction.DisableRealtimeScanning =>
                 "Start action: DisableRealtimeMonitoring=true (realtime OFF)\nStop action: DisableRealtimeMonitoring=false (realtime ON)\nRequires UAC. If start fails, turn off Tamper Protection in Windows Security.",
             BuiltinAction.MaxCpuPerformance =>
-                "Start action: powercfg High performance\nStop action: powercfg Balanced",
+                "Start action: powercfg /s High performance\nStop action: powercfg /s Balanced (same command, Balanced GUID)",
             BuiltinAction.MaxGpuPerformance =>
-                "Start action: nvidia-smi -pl <watts> (elevated)\nStop action: none",
+                "Start action: nvidia-smi -pl <start watts>\nStop action: nvidia-smi -pl <stop watts> (same command)",
             _ => string.Empty
         };
     }
@@ -315,7 +318,8 @@ public sealed partial class EditTaskDialog : ContentDialog
         StartUrl = source.StartUrl,
         StopUrl = source.StopUrl,
         BuiltinAction = source.BuiltinAction,
-        GpuPowerLimitWatts = source.GpuPowerLimitWatts
+        GpuPowerLimitWatts = source.GpuPowerLimitWatts,
+        GpuStopPowerLimitWatts = source.GpuStopPowerLimitWatts
     };
 
     private static void SelectComboByTag(ComboBox box, string tag)

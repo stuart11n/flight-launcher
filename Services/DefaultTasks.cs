@@ -189,12 +189,13 @@ public static class DefaultTasks
         StopUrl = stop
     };
 
-    private static TaskEntry Builtin(string name, BuiltinAction action, int gpuWatts = 352) => new()
+    private static TaskEntry Builtin(string name, BuiltinAction action, int gpuWatts = 352, int gpuStopWatts = 200) => new()
     {
         Name = name,
         Kind = TaskKind.Builtin,
         BuiltinAction = action,
         GpuPowerLimitWatts = gpuWatts,
+        GpuStopPowerLimitWatts = gpuStopWatts,
         // Keep GUIDs documented for runners that shell out via BuiltinAction.
         Arguments = action == BuiltinAction.MaxCpuPerformance
             ? $"{HighPerfGuid}|{BalancedGuid}"

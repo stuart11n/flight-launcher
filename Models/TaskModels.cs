@@ -51,6 +51,7 @@ public sealed class TaskEntry
     // Builtin
     public BuiltinAction BuiltinAction { get; set; } = BuiltinAction.None;
     public int GpuPowerLimitWatts { get; set; } = 352;
+    public int GpuStopPowerLimitWatts { get; set; } = 200;
 
     [JsonIgnore]
     public string TypeLabel => Kind switch
@@ -75,7 +76,8 @@ public sealed class TaskEntry
                     BuiltinAction.DisableFirewall => "Firewall off / on",
                     BuiltinAction.DisableRealtimeScanning => "Defender realtime off / on",
                     BuiltinAction.MaxCpuPerformance => "Power plan High / Balanced",
-                    BuiltinAction.MaxGpuPerformance => $"nvidia-smi -pl {GpuPowerLimitWatts}",
+                    BuiltinAction.MaxGpuPerformance =>
+                        $"nvidia-smi -pl {GpuPowerLimitWatts} / stop {GpuStopPowerLimitWatts}",
                     _ => "System"
                 },
                 _ => string.IsNullOrWhiteSpace(Path)
