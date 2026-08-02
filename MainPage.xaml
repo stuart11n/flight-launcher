@@ -200,12 +200,16 @@
                         <SelectorBarItem x:Name="RacingTab" Text="Racing" Tag="racing" />
                     </SelectorBar>
 
-                    <Button
-                        Grid.Column="1"
-                        Content="Rename"
-                        VerticalAlignment="Center"
-                        Click="RenameMode_Click"
-                        ToolTipService.ToolTip="Rename the selected profile tab" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button
+                            Content="Desktop shortcuts"
+                            Click="CreateDesktopShortcuts_Click"
+                            ToolTipService.ToolTip="Create Start and Stop shortcuts on the desktop for this profile" />
+                        <Button
+                            Content="Rename"
+                            Click="RenameMode_Click"
+                            ToolTipService.ToolTip="Rename the selected profile tab" />
+                    </StackPanel>
                 </Grid>
 
                 <Grid Grid.Row="1" ColumnSpacing="12">

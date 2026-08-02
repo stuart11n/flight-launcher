@@ -225,6 +225,22 @@ public sealed partial class MainPage : Page
         AppendLog($"Renamed profile to '{mode.Name}'");
     }
 
+    private void CreateDesktopShortcuts_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var mode = _settings.GetActiveMode();
+            var (startPath, stopPath) = DesktopShortcutService.CreateProfileShortcuts(mode.Id, mode.Name);
+            AppendLog($"Desktop shortcuts created:");
+            AppendLog($"  {startPath}");
+            AppendLog($"  {stopPath}");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Desktop shortcuts failed: {ex.Message}");
+        }
+    }
+
     private void LoadActiveModeTasks()
     {
         var mode = _settings.GetActiveMode();
