@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using WinRT.Interop;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public sealed class TrayService : IDisposable
 {
@@ -56,7 +56,7 @@ public sealed class TrayService : IDisposable
             uFlags = NifMessage | NifIcon | NifTip,
             uCallbackMessage = WmTrayIcon,
             hIcon = LoadIcon(),
-            szTip = "Flight Launcher"
+            szTip = "Simpit Launcher"
         };
 
         _added = Shell_NotifyIcon(NimAdd, ref _data);

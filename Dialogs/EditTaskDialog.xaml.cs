@@ -1,11 +1,11 @@
-using FlightLauncher.Models;
-using FlightLauncher.Services;
+using SimpitLauncher.Models;
+using SimpitLauncher.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 
-namespace FlightLauncher.Dialogs;
+namespace SimpitLauncher.Dialogs;
 
 public sealed partial class EditTaskDialog : ContentDialog
 {
@@ -19,7 +19,7 @@ public sealed partial class EditTaskDialog : ContentDialog
         _ownerWindow = ownerWindow;
         _entry = existing is null
             ? new TaskEntry { Kind = forceKind ?? TaskKind.Executable }
-            : Clone(existing);
+            : existing.Clone();
 
         if (forceKind is not null && existing is null)
         {
@@ -39,6 +39,7 @@ public sealed partial class EditTaskDialog : ContentDialog
     private void LoadFromEntry()
     {
         NameBox.Text = _entry.Name;
+        DelayBox.Value = Math.Max(0, _entry.DelaySeconds);
         SelectComboByTag(KindBox, _entry.Kind.ToString());
         PathBox.Text = _entry.Path;
         ArgsBox.Text = _entry.Arguments;
@@ -74,6 +75,7 @@ public sealed partial class EditTaskDialog : ContentDialog
     private void ApplyToEntry()
     {
         _entry.Name = NameBox.Text.Trim();
+        _entry.DelaySeconds = (int)Math.Max(0, double.IsNaN(DelayBox.Value) ? 0 : DelayBox.Value);
         _entry.Kind = ParseEnum(GetSelectedTag(KindBox), TaskKind.Executable);
         _entry.Path = PathBox.Text.Trim();
         _entry.Arguments = ArgsBox.Text.Trim();
@@ -123,8 +125,10 @@ public sealed partial class EditTaskDialog : ContentDialog
                 _entry.Name = "Test entry";
             }
 
-            var probe = Clone(_entry);
+            var probe = _entry.Clone();
             probe.Enabled = true;
+            // Test actions run immediately so you can verify the step without waiting.
+            probe.DelaySeconds = 0;
             var log = starting
                 ? await _runner.RunStartAsync([probe])
                 : await _runner.RunStopAsync([probe]);
@@ -298,28 +302,6 @@ public sealed partial class EditTaskDialog : ContentDialog
         BuiltinAction.MaxCpuPerformance => "Max CPU performance",
         BuiltinAction.MaxGpuPerformance => "Max GPU performance",
         _ => "System"
-    };
-
-    private static TaskEntry Clone(TaskEntry source) => new()
-    {
-        Id = source.Id,
-        Name = source.Name,
-        Enabled = source.Enabled,
-        Kind = source.Kind,
-        Path = source.Path,
-        Arguments = source.Arguments,
-        RunAsAdministrator = source.RunAsAdministrator,
-        KillBeforeLaunch = source.KillBeforeLaunch,
-        KillBeforeLaunchForce = source.KillBeforeLaunchForce,
-        KillImageName = source.KillImageName,
-        StopMode = source.StopMode,
-        StopImageName = source.StopImageName,
-        StopCommand = source.StopCommand,
-        StartUrl = source.StartUrl,
-        StopUrl = source.StopUrl,
-        BuiltinAction = source.BuiltinAction,
-        GpuPowerLimitWatts = source.GpuPowerLimitWatts,
-        GpuStopPowerLimitWatts = source.GpuStopPowerLimitWatts
     };
 
     private static void SelectComboByTag(ComboBox box, string tag)

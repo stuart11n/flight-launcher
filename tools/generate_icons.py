@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PIL import Image
 
-src_path = Path(__file__).resolve().parents[1] / "Assets" / "airplane-icon-source.png"
+src_path = Path(__file__).resolve().parents[1] / "Assets" / "rocket-icon-source.png"
 assets = Path(__file__).resolve().parents[1] / "Assets"
 src = Image.open(src_path).convert("RGBA")
 

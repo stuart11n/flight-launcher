@@ -1,6 +1,6 @@
-using FlightLauncher.Models;
+using SimpitLauncher.Models;
 
-namespace FlightLauncher;
+namespace SimpitLauncher;
 
 public sealed class CommandLineOptions
 {
@@ -97,7 +97,7 @@ public sealed class CommandLineOptions
 
     public static string HelpText =>
         """
-        FlightLauncher command line:
+        SimpitLauncher command line:
 
           --profile flight|racing   Select mode (aliases: --mode, -p, --flight, --racing)
           --start                   Run START for the selected/active profile
@@ -107,9 +107,9 @@ public sealed class CommandLineOptions
           --help                    Show this help
 
         Examples:
-          FlightLauncher.exe --profile flight --start --exit
-          FlightLauncher.exe --racing --stop --exit
-          FlightLauncher.exe -p flight --start
+          SimpitLauncher.exe --profile flight --start --exit
+          SimpitLauncher.exe --racing --stop --exit
+          SimpitLauncher.exe -p flight --start
         """;
 
     private static string? TakeNext(string[] args, ref int i)

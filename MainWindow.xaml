@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Window
-    x:Class="FlightLauncher.MainWindow"
+    x:Class="SimpitLauncher.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:FlightLauncher"
+    xmlns:local="using:SimpitLauncher"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Title="Flight Launcher"
+    Title="Simpit Launcher"
     mc:Ignorable="d">
     <Window.SystemBackdrop>
         <MicaBackdrop />
@@ -18,7 +18,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar x:Name="AppTitleBar" Title="Flight Launcher">
+        <TitleBar x:Name="AppTitleBar" Title="Simpit Launcher">
             <TitleBar.IconSource>
                 <ImageIconSource ImageSource="Assets/AppIcon.ico" />
             </TitleBar.IconSource>

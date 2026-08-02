@@ -1,8 +1,8 @@
-using FlightLauncher.Services;
+using SimpitLauncher.Services;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 
-namespace FlightLauncher;
+namespace SimpitLauncher;
 
 public sealed partial class MainWindow : Window
 {

@@ -1,7 +1,7 @@
-﻿using FlightLauncher.Services;
+using SimpitLauncher.Services;
 using Microsoft.UI.Xaml;
 
-namespace FlightLauncher;
+namespace SimpitLauncher;
 
 public partial class App : Application
 {

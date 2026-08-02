@@ -3,7 +3,7 @@ using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 /// <summary>
 /// In-process firewall (INetFwPolicy2) and Defender preference (MSFT_MpPreference) control.
@@ -186,7 +186,7 @@ public static class WindowsProtectionService
         var exe = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(exe) || !File.Exists(exe))
         {
-            throw new InvalidOperationException("Could not locate FlightLauncher.exe for elevation.");
+            throw new InvalidOperationException("Could not locate SimpitLauncher.exe for elevation.");
         }
 
         var psi = new ProcessStartInfo

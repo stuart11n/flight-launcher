@@ -1,16 +1,16 @@
-; FlightLauncher Inno Setup script
+; SimpitLauncher Inno Setup script
 ; Requires Inno Setup 6: https://jrsoftware.org/isinfo.php
 ; 1) Run publish.ps1
 ; 2) Open this file in Inno Setup Compiler and Build
 
-#define MyAppName "FlightLauncher"
+#define MyAppName "Simpit Launcher"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Stuart"
-#define MyAppExeName "FlightLauncher.exe"
+#define MyAppExeName "SimpitLauncher.exe"
 #define PublishDir "..\artifacts\publish\win-x64"
 
 [Setup]
-AppId={{A7C3E8F1-4B2D-4E9A-9C1F-8D6B5A2E0F33}
+AppId={{B8D4F9A2-5C3E-4F0B-8D2A-9E7C6B3F1A44}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -18,7 +18,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\artifacts\installer
-OutputBaseFilename=FlightLauncherSetup
+OutputBaseFilename=SimpitLauncherSetup
 SetupIconFile=..\Assets\AppIcon.ico
 Compression=lzma2
 SolidCompression=yes

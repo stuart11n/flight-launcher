@@ -1,6 +1,6 @@
-using FlightLauncher.Models;
+using SimpitLauncher.Models;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public static class DefaultTasks
 {

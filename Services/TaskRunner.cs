@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Text;
-using FlightLauncher.Models;
+using SimpitLauncher.Models;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public sealed class TaskRunner
 {
@@ -22,6 +22,12 @@ public sealed class TaskRunner
             ct.ThrowIfCancellationRequested();
             try
             {
+                if (task.DelaySeconds > 0)
+                {
+                    ScheduleDeferred(task, starting: true, log, progress, ct);
+                    continue;
+                }
+
                 var line = await StartOneAsync(task, ct).ConfigureAwait(false);
                 Append(log, progress, line);
             }
@@ -42,6 +48,12 @@ public sealed class TaskRunner
             ct.ThrowIfCancellationRequested();
             try
             {
+                if (task.DelaySeconds > 0)
+                {
+                    ScheduleDeferred(task, starting: false, log, progress, ct);
+                    continue;
+                }
+
                 var line = await StopOneAsync(task, ct).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -63,6 +75,13 @@ public sealed class TaskRunner
     {
         try
         {
+            if (task.DelaySeconds > 0)
+            {
+                var log = new StringBuilder();
+                ScheduleDeferred(task, starting: true, log, progress, ct);
+                return log.ToString().TrimEnd();
+            }
+
             var line = await StartOneAsync(task, ct).ConfigureAwait(false);
             progress?.Report(line);
             return line;
@@ -79,6 +98,13 @@ public sealed class TaskRunner
     {
         try
         {
+            if (task.DelaySeconds > 0)
+            {
+                var log = new StringBuilder();
+                ScheduleDeferred(task, starting: false, log, progress, ct);
+                return log.ToString().TrimEnd();
+            }
+
             var line = await StopOneAsync(task, ct).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -94,6 +120,44 @@ public sealed class TaskRunner
             progress?.Report(line);
             return line;
         }
+    }
+
+    private static void ScheduleDeferred(
+        TaskEntry task,
+        bool starting,
+        StringBuilder log,
+        IProgress<string>? progress,
+        CancellationToken ct)
+    {
+        var seconds = Math.Max(0, task.DelaySeconds);
+        var snapshot = task.Clone();
+        var action = starting ? "START" : "STOP";
+        Append(log, progress, $"SCHEDULED {action} [{snapshot.Name}] in {seconds}s (background)");
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(seconds), ct).ConfigureAwait(false);
+                var line = starting
+                    ? await StartOneAsync(snapshot, ct).ConfigureAwait(false)
+                    : await StopOneAsync(snapshot, ct).ConfigureAwait(false);
+                if (!starting && string.IsNullOrWhiteSpace(line))
+                {
+                    line = $"SKIP [{snapshot.Name}]";
+                }
+
+                progress?.Report(line);
+            }
+            catch (OperationCanceledException)
+            {
+                progress?.Report($"CANCELLED [{snapshot.Name}] delayed {action}");
+            }
+            catch (Exception ex)
+            {
+                progress?.Report($"ERROR [{snapshot.Name}] (delayed) {ex.Message}");
+            }
+        }, CancellationToken.None);
     }
 
     private static async Task<string> StartOneAsync(TaskEntry task, CancellationToken ct)

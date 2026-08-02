@@ -24,10 +24,10 @@ jobs:
           dotnet-version: "9.0.x"
 
       - name: Restore
-        run: dotnet restore .\FlightLauncher.csproj -p:Platform=x64
+        run: dotnet restore .\SimpitLauncher.csproj -p:Platform=x64
 
       - name: Build
-        run: dotnet build .\FlightLauncher.csproj -c Release -p:Platform=x64 --no-restore
+        run: dotnet build .\SimpitLauncher.csproj -c Release -p:Platform=x64 --no-restore
 
       - name: Publish self-contained (win-x64)
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: Upload publish folder
         uses: actions/upload-artifact@v4
         with:
-          name: FlightLauncher-win-x64
+          name: SimpitLauncher-win-x64
           path: artifacts/publish/win-x64
           if-no-files-found: error
 
@@ -46,11 +46,11 @@ jobs:
       - name: Build installer
         shell: cmd
         run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\FlightLauncher.iss
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\SimpitLauncher.iss
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: FlightLauncherSetup
-          path: artifacts/installer/FlightLauncherSetup.exe
+          name: SimpitLauncherSetup
+          path: artifacts/installer/SimpitLauncherSetup.exe
           if-no-files-found: error

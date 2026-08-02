@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "FlightLauncher (Package)": {
+    "SimpitLauncher (Package)": {
       "commandName": "MsixPackage"
     },
-    "FlightLauncher (Unpackaged)": {
+    "SimpitLauncher (Unpackaged)": {
       "commandName": "Project"
     }
   }

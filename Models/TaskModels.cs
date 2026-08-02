@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace FlightLauncher.Models;
+namespace SimpitLauncher.Models;
 
 public enum TaskKind
 {
@@ -53,6 +53,12 @@ public sealed class TaskEntry
     public int GpuPowerLimitWatts { get; set; } = 352;
     public int GpuStopPowerLimitWatts { get; set; } = 200;
 
+    /// <summary>
+    /// Seconds to wait before running this entry. When &gt; 0, START/STOP schedules the
+    /// action in the background and continues to the next entry immediately.
+    /// </summary>
+    public int DelaySeconds { get; set; }
+
     [JsonIgnore]
     public string TypeLabel => Kind switch
     {
@@ -66,7 +72,7 @@ public sealed class TaskEntry
     {
         get
         {
-            return Kind switch
+            var body = Kind switch
             {
                 TaskKind.Webhook => string.IsNullOrWhiteSpace(StartUrl)
                     ? (string.IsNullOrWhiteSpace(StopUrl) ? "(no URL)" : $"Stop: {StopUrl}")
@@ -86,8 +92,33 @@ public sealed class TaskEntry
                         : $"Stop: {StopMode}")
                     : string.IsNullOrWhiteSpace(Arguments) ? Path : $"{Path} {Arguments}"
             };
+
+            return DelaySeconds > 0 ? $"Delay {DelaySeconds}s · {body}" : body;
         }
     }
+
+    public TaskEntry Clone() => new()
+    {
+        Id = Id,
+        Name = Name,
+        Enabled = Enabled,
+        Kind = Kind,
+        Path = Path,
+        Arguments = Arguments,
+        RunAsAdministrator = RunAsAdministrator,
+        KillBeforeLaunch = KillBeforeLaunch,
+        KillBeforeLaunchForce = KillBeforeLaunchForce,
+        KillImageName = KillImageName,
+        StopMode = StopMode,
+        StopImageName = StopImageName,
+        StopCommand = StopCommand,
+        StartUrl = StartUrl,
+        StopUrl = StopUrl,
+        BuiltinAction = BuiltinAction,
+        GpuPowerLimitWatts = GpuPowerLimitWatts,
+        GpuStopPowerLimitWatts = GpuStopPowerLimitWatts,
+        DelaySeconds = DelaySeconds
+    };
 }
 
 public sealed class ModeConfig

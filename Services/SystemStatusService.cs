@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public sealed record SystemStatusSnapshot(
     string GpuPowerLimit,

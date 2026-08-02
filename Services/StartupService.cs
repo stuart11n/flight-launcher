@@ -1,23 +1,26 @@
 using Microsoft.Win32;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public static class StartupService
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "FlightLauncher";
+    private const string ValueName = "SimpitLauncher";
+    private const string LegacyValueName = "FlightLauncher";
 
     public static bool IsEnabled()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
-        var value = key?.GetValue(ValueName) as string;
-        return !string.IsNullOrWhiteSpace(value);
+        return HasValue(key, ValueName) || HasValue(key, LegacyValueName);
     }
 
     public static void SetEnabled(bool enabled)
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
             ?? Registry.CurrentUser.CreateSubKey(RunKeyPath);
+
+        // Always clear the old FlightLauncher startup entry on change.
+        key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
 
         if (!enabled)
         {
@@ -38,4 +41,7 @@ public static class StartupService
 
         key.SetValue(ValueName, $"\"{exe}\"");
     }
+
+    private static bool HasValue(RegistryKey? key, string name) =>
+        !string.IsNullOrWhiteSpace(key?.GetValue(name) as string);
 }

@@ -1,7 +1,7 @@
 using System.Text.Json;
-using FlightLauncher.Models;
+using SimpitLauncher.Models;
 
-namespace FlightLauncher.Services;
+namespace SimpitLauncher.Services;
 
 public sealed class TaskStore
 {
@@ -15,11 +15,11 @@ public sealed class TaskStore
 
     public TaskStore()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "FlightLauncher");
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var dir = Path.Combine(appData, "SimpitLauncher");
         Directory.CreateDirectory(dir);
         _settingsPath = Path.Combine(dir, "tasks.json");
+        MigrateLegacySettings(appData, _settingsPath);
     }
 
     public string SettingsPath => _settingsPath;
@@ -60,6 +60,29 @@ public sealed class TaskStore
         settings.Tasks = null;
         var json = JsonSerializer.Serialize(settings, JsonOptions);
         File.WriteAllText(_settingsPath, json);
+    }
+
+    private static void MigrateLegacySettings(string appData, string newSettingsPath)
+    {
+        if (File.Exists(newSettingsPath))
+        {
+            return;
+        }
+
+        var legacyPath = Path.Combine(appData, "FlightLauncher", "tasks.json");
+        if (!File.Exists(legacyPath))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Copy(legacyPath, newSettingsPath);
+        }
+        catch
+        {
+            // First-run seed will create defaults if copy fails.
+        }
     }
 
     /// <returns>True if settings were changed and should be re-saved.</returns>

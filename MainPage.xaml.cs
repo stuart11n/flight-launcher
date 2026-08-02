@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
-using FlightLauncher.Dialogs;
-using FlightLauncher.Models;
-using FlightLauncher.Services;
+using SimpitLauncher.Dialogs;
+using SimpitLauncher.Models;
+using SimpitLauncher.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 
-namespace FlightLauncher;
+namespace SimpitLauncher;
 
 public sealed partial class MainPage : Page
 {
@@ -134,6 +134,14 @@ public sealed partial class MainPage : Page
             AppendLog("CLI: --exit");
             App.MainWindow?.ForceExit();
         }
+    }
+
+    private void ViewSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        var tag = (sender.SelectedItem?.Tag as string) ?? "tasks";
+        var showLog = string.Equals(tag, "log", StringComparison.OrdinalIgnoreCase);
+        TasksPanel.Visibility = showLog ? Visibility.Collapsed : Visibility.Visible;
+        LogPanel.Visibility = showLog ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ModeSelector_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
@@ -550,5 +558,6 @@ public sealed partial class MainPage : Page
 
         var stamp = DateTime.Now.ToString("HH:mm:ss");
         LogBox.Text += $"[{stamp}] {line}{Environment.NewLine}";
+        LogBox.SelectionStart = LogBox.Text.Length;
     }
 }
