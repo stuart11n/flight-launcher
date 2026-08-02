@@ -27,6 +27,9 @@ public partial class App : Application
             return;
         }
 
+        // Keep the running app's taskbar identity separate from Start/Stop desktop shortcuts.
+        AppIdentity.SetProcessAppUserModelId();
+
         MainWindow = new MainWindow();
         MainWindow.Activate();
 

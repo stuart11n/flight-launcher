@@ -49,18 +49,10 @@ public static class DefaultTasks
 
             Builtin("Max CPU performance", BuiltinAction.MaxCpuPerformance),
 
-            Webhook("Relay 183",
-                start: "http://192.168.74.183/relay/0?turn=on",
-                stop: "http://192.168.74.183/relay/0?turn=off"),
-            Webhook("Relay 184",
-                start: string.Empty,
-                stop: "http://192.168.74.184/relay/0?turn=off"),
-            Webhook("Relay 185",
-                start: "http://192.168.74.185/relay/0?turn=on",
-                stop: "http://192.168.74.185/relay/0?turn=off"),
-            Webhook("Relay 76",
-                start: "http://192.168.74.76/relay/0?turn=on",
-                stop: "http://192.168.74.76/relay/0?turn=off"),
+            Shelly("Relay 183", "192.168.74.183"),
+            Shelly("Relay 184", "192.168.74.184"),
+            Shelly("Relay 185", "192.168.74.185"),
+            Shelly("Relay 76", "192.168.74.76"),
 
             Exe("Steam MSFS",
                 path: "steam://rungameid/2537590",
@@ -84,6 +76,7 @@ public static class DefaultTasks
 
             Builtin("Disable Realtime Threat Scanning", BuiltinAction.DisableRealtimeScanning),
             Builtin("Disable firewall", BuiltinAction.DisableFirewall),
+            Builtin("Disable USB power saving", BuiltinAction.DisableUsbPowerSaving),
             Builtin("Max GPU performance", BuiltinAction.MaxGpuPerformance, gpuWatts: 352),
 
             Exe("PadForge",
@@ -187,6 +180,13 @@ public static class DefaultTasks
         Kind = TaskKind.Webhook,
         StartUrl = start,
         StopUrl = stop
+    };
+
+    private static TaskEntry Shelly(string name, string ip) => new()
+    {
+        Name = name,
+        Kind = TaskKind.Shelly,
+        IpAddress = ip
     };
 
     private static TaskEntry Builtin(string name, BuiltinAction action, int gpuWatts = 352, int gpuStopWatts = 200) => new()

@@ -30,6 +30,7 @@
     <Content Include="Assets\Square44x44Logo.targetsize-48_altform-lightunplated.png" />
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\AppIcon.ico" />
+    <Content Include="Assets\AppIcon.png" />
     <Content Include="Assets\StartShortcut.ico" />
     <Content Include="Assets\StopShortcut.ico" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
@@ -42,6 +43,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.8" />
     <PackageReference Include="System.Management" Version="9.0.8" />
   </ItemGroup>
 

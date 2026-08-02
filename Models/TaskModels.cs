@@ -6,7 +6,9 @@ public enum TaskKind
 {
     Executable,
     Webhook,
-    Builtin
+    Builtin,
+    Shelly,
+    ComCommand
 }
 
 public enum StopMode
@@ -23,7 +25,8 @@ public enum BuiltinAction
     DisableFirewall,
     DisableRealtimeScanning,
     MaxCpuPerformance,
-    MaxGpuPerformance
+    MaxGpuPerformance,
+    DisableUsbPowerSaving
 }
 
 public sealed class TaskEntry
@@ -48,10 +51,21 @@ public sealed class TaskEntry
     public string StartUrl { get; set; } = string.Empty;
     public string StopUrl { get; set; } = string.Empty;
 
+    // Shelly (IP-only relay webhook)
+    public string IpAddress { get; set; } = string.Empty;
+
+    // COM command (serial port write)
+    public string ComPort { get; set; } = string.Empty;
+    public string ComStartText { get; set; } = string.Empty;
+    public string ComStopText { get; set; } = string.Empty;
+    public int ComBaudRate { get; set; } = 0;
+
     // Builtin
     public BuiltinAction BuiltinAction { get; set; } = BuiltinAction.None;
     public int GpuPowerLimitWatts { get; set; } = 352;
     public int GpuStopPowerLimitWatts { get; set; } = 200;
+    /// <summary>When true, STOP skips this system option (START still runs).</summary>
+    public bool DisableStopAction { get; set; }
 
     /// <summary>
     /// Seconds to wait before running this entry. When &gt; 0, START/STOP schedules the
@@ -64,6 +78,8 @@ public sealed class TaskEntry
     {
         TaskKind.Webhook => "Webhook",
         TaskKind.Builtin => "System",
+        TaskKind.Shelly => "Shelly",
+        TaskKind.ComCommand => "COM",
         _ => "Executable"
     };
 
@@ -77,15 +93,11 @@ public sealed class TaskEntry
                 TaskKind.Webhook => string.IsNullOrWhiteSpace(StartUrl)
                     ? (string.IsNullOrWhiteSpace(StopUrl) ? "(no URL)" : $"Stop: {StopUrl}")
                     : StartUrl,
-                TaskKind.Builtin => BuiltinAction switch
-                {
-                    BuiltinAction.DisableFirewall => "Firewall off / on",
-                    BuiltinAction.DisableRealtimeScanning => "Realtime threat scanning off / on",
-                    BuiltinAction.MaxCpuPerformance => "Power plan High / Balanced",
-                    BuiltinAction.MaxGpuPerformance =>
-                        $"nvidia-smi -pl {GpuPowerLimitWatts} / stop {GpuStopPowerLimitWatts}",
-                    _ => "System"
-                },
+                TaskKind.Shelly => string.IsNullOrWhiteSpace(IpAddress)
+                    ? "(no IP)"
+                    : $"http://{IpAddress}/relay/0?turn=on|off",
+                TaskKind.ComCommand => ComSummary(),
+                TaskKind.Builtin => BuiltinSummary(),
                 _ => string.IsNullOrWhiteSpace(Path)
                     ? (StopMode == StopMode.CommandLine
                         ? $"Stop cmd: {StopCommand}"
@@ -95,6 +107,44 @@ public sealed class TaskEntry
 
             return DelaySeconds > 0 ? $"Delay {DelaySeconds}s · {body}" : body;
         }
+    }
+
+    private string ComSummary()
+    {
+        var port = string.IsNullOrWhiteSpace(ComPort) ? "(no COM)" : ComPort.Trim().ToUpperInvariant();
+        var start = string.IsNullOrEmpty(ComStartText) ? "—" : QuotePreview(ComStartText);
+        var stop = string.IsNullOrEmpty(ComStopText) ? "—" : QuotePreview(ComStopText);
+        return ComBaudRate > 0
+            ? $"{port}@{ComBaudRate}: start {start} / stop {stop}"
+            : $"{port}: start {start} / stop {stop}";
+    }
+
+    private static string QuotePreview(string text)
+    {
+        var preview = text.Length <= 24 ? text : text[..21] + "…";
+        return $"\"{preview.Replace("\r", "\\r").Replace("\n", "\\n")}\"";
+    }
+
+    private string BuiltinSummary()
+    {
+        var startOnly = DisableStopAction;
+        return BuiltinAction switch
+        {
+            BuiltinAction.DisableFirewall => startOnly ? "Firewall off (no stop)" : "Firewall off / on",
+            BuiltinAction.DisableRealtimeScanning => startOnly
+                ? "Realtime threat scanning off (no stop)"
+                : "Realtime threat scanning off / on",
+            BuiltinAction.MaxCpuPerformance => startOnly
+                ? "Power plan High (no stop)"
+                : "Power plan High / Balanced",
+            BuiltinAction.MaxGpuPerformance => startOnly
+                ? $"nvidia-smi -pl {GpuPowerLimitWatts} (no stop)"
+                : $"nvidia-smi -pl {GpuPowerLimitWatts} / stop {GpuStopPowerLimitWatts}",
+            BuiltinAction.DisableUsbPowerSaving => startOnly
+                ? "USB power saving off (no stop)"
+                : "USB power saving off / on",
+            _ => "System"
+        };
     }
 
     public TaskEntry Clone() => new()
@@ -114,9 +164,15 @@ public sealed class TaskEntry
         StopCommand = StopCommand,
         StartUrl = StartUrl,
         StopUrl = StopUrl,
+        IpAddress = IpAddress,
+        ComPort = ComPort,
+        ComStartText = ComStartText,
+        ComStopText = ComStopText,
+        ComBaudRate = ComBaudRate,
         BuiltinAction = BuiltinAction,
         GpuPowerLimitWatts = GpuPowerLimitWatts,
         GpuStopPowerLimitWatts = GpuStopPowerLimitWatts,
+        DisableStopAction = DisableStopAction,
         DelaySeconds = DelaySeconds
     };
 }

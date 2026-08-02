@@ -34,6 +34,10 @@ public static class DesktopShortcutService
             stopIcon,
             $"Stop the {safeName} profile in Simpit Launcher");
 
+        // Distinct AppUserModelIDs so these shortcuts don't override the main window taskbar icon.
+        AppIdentity.SetShortcutAppUserModelId(startPath, AppIdentity.ShortcutId(profileId, "Start"));
+        AppIdentity.SetShortcutAppUserModelId(stopPath, AppIdentity.ShortcutId(profileId, "Stop"));
+
         return (startPath, stopPath);
     }
 

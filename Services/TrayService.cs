@@ -134,23 +134,73 @@ public sealed class TrayService : IDisposable
 
     private static nint LoadIcon()
     {
+        // Prefer the small icon embedded in the exe (ApplicationIcon) — most reliable for tray.
+        var exe = Environment.ProcessPath;
+        if (string.IsNullOrWhiteSpace(exe))
+        {
+            exe = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(exe) && File.Exists(exe))
+        {
+            ExtractIconEx(exe, 0, out var large, out var small, 1);
+            if (small != nint.Zero)
+            {
+                if (large != nint.Zero && large != small)
+                {
+                    DestroyIcon(large);
+                }
+
+                return small;
+            }
+
+            if (large != nint.Zero)
+            {
+                return large;
+            }
+        }
+
+        // Fallback: load AppIcon.ico at the system small-icon size.
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (!File.Exists(iconPath) && !string.IsNullOrWhiteSpace(exe))
+        {
+            var dir = Path.GetDirectoryName(exe);
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                iconPath = Path.Combine(dir, "Assets", "AppIcon.ico");
+            }
+        }
+
         if (File.Exists(iconPath))
         {
-            var icon = LoadImage(nint.Zero, iconPath, 1, 0, 0, 0x00000010);
+            var cx = GetSystemMetrics(SmCxSmIcon);
+            var cy = GetSystemMetrics(SmCySmIcon);
+            if (cx <= 0) { cx = 16; }
+            if (cy <= 0) { cy = 16; }
+
+            var icon = LoadImage(nint.Zero, iconPath, ImageIcon, cx, cy, LrLoadFromFile);
             if (icon != nint.Zero)
             {
                 return icon;
             }
         }
 
-        return LoadIcon(nint.Zero, 32512); // IDI_APPLICATION
+        return LoadIcon(nint.Zero, IdiApplication);
     }
+
+    private const int ImageIcon = 1;
+    private const uint LrLoadFromFile = 0x00000010;
+    private const int SmCxSmIcon = 49;
+    private const int SmCySmIcon = 50;
+    private const nint IdiApplication = 32512;
 
     private delegate nint SubclassProc(nint hWnd, uint msg, nint wParam, nint lParam, nuint id, nint refData);
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern bool Shell_NotifyIcon(int dwMessage, ref NOTIFYICONDATA lpData);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern uint ExtractIconEx(string lpszFile, int nIconIndex, out nint phiconLarge, out nint phiconSmall, uint nIcons);
 
     [DllImport("comctl32.dll", ExactSpelling = true)]
     private static extern bool SetWindowSubclass(nint hWnd, SubclassProc pfnSubclass, nuint uIdSubclass, nint dwRefData);
@@ -169,6 +219,9 @@ public sealed class TrayService : IDisposable
 
     [DllImport("user32.dll")]
     private static extern bool DestroyIcon(nint hIcon);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("user32.dll")]
     private static extern nint CreatePopupMenu();

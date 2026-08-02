@@ -37,11 +37,30 @@ public static class WindowsProtectionService
         SetDefenderRealtimeDisabledCore(disabled);
     }
 
+    /// <summary>
+    /// Start: disable USB selective suspend + per-device "allow turn off to save power" for USB*.
+    /// Stop: re-enable both.
+    /// </summary>
+    public static void SetUsbPowerSavingEnabled(bool enabled)
+    {
+        if (!IsProcessElevated())
+        {
+            RunElevatedJobAndWait(enabled ? "usb-power-on" : "usb-power-off");
+            return;
+        }
+
+        SetUsbPowerSavingEnabledCore(enabled);
+    }
+
+    private static string ElevatedErrorFilePath =>
+        Path.Combine(Path.GetTempPath(), "simpit-launcher-elevated-error.txt");
+
     /// <summary>Runs a one-shot elevated job and returns a process exit code (0 = success).</summary>
     public static int ExecuteElevatedJob(string job)
     {
         try
         {
+            TryDelete(ElevatedErrorFilePath);
             switch (job.Trim().ToLowerInvariant())
             {
                 case "firewall-on":
@@ -57,6 +76,12 @@ public static class WindowsProtectionService
                 case "defender-off":
                     SetDefenderRealtimeDisabledCore(disabled: true);
                     return 0;
+                case "usb-power-on":
+                    SetUsbPowerSavingEnabledCore(enabled: true);
+                    return 0;
+                case "usb-power-off":
+                    SetUsbPowerSavingEnabledCore(enabled: false);
+                    return 0;
                 default:
                     return 3;
             }
@@ -64,11 +89,44 @@ public static class WindowsProtectionService
         catch (InvalidOperationException ex) when (
             ex.Message.Contains("Tamper Protection", StringComparison.OrdinalIgnoreCase))
         {
+            TryWriteElevatedError(ex.Message);
             return 2;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            TryWriteElevatedError(ex.Message);
             return 1;
+        }
+    }
+
+    private static void TryWriteElevatedError(string message)
+    {
+        try { File.WriteAllText(ElevatedErrorFilePath, message); }
+        catch { /* ignore */ }
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) { File.Delete(path); } }
+        catch { /* ignore */ }
+    }
+
+    private static string? TryReadElevatedError()
+    {
+        try
+        {
+            if (!File.Exists(ElevatedErrorFilePath))
+            {
+                return null;
+            }
+
+            var text = File.ReadAllText(ElevatedErrorFilePath).Trim();
+            TryDelete(ElevatedErrorFilePath);
+            return string.IsNullOrWhiteSpace(text) ? null : text;
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -181,6 +239,140 @@ public static class WindowsProtectionService
         }
     }
 
+    private static void SetUsbPowerSavingEnabledCore(bool enabled)
+    {
+        // Best-effort: many schemes (esp. High Performance / modern Win11) omit the USB
+        // selective-suspend powercfg setting entirely — do not fail the job on that.
+        TrySetUsbSelectiveSuspendPowerCfg(enabled);
+        SetUsbSelectiveSuspendRegistry(!enabled);
+
+        // Per-device "Allow the computer to turn off this device to save power" for USB*.
+        // Enable=false => power saving off (checkbox unchecked).
+        var allowTurnOff = enabled;
+        var seen = 0;
+        var changed = 0;
+        try
+        {
+            var scope = new ManagementScope(@"\\.\root\wmi");
+            scope.Connect();
+            using var searcher = new ManagementObjectSearcher(
+                scope,
+                new ObjectQuery("SELECT * FROM MSPower_DeviceEnable"));
+            using var results = searcher.Get();
+            foreach (ManagementObject obj in results)
+            {
+                using (obj)
+                {
+                    var instanceName = obj["InstanceName"]?.ToString() ?? string.Empty;
+                    if (!instanceName.StartsWith("USB", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    seen++;
+                    try
+                    {
+                        obj["Enable"] = allowTurnOff;
+                        obj.Put();
+                        changed++;
+                    }
+                    catch
+                    {
+                        // Some instances are read-only; skip and continue.
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"Failed to update USB device power management: {ex.Message}", ex);
+        }
+
+        if (seen == 0)
+        {
+            throw new InvalidOperationException("No USB MSPower_DeviceEnable instances found.");
+        }
+
+        if (changed == 0)
+        {
+            throw new InvalidOperationException(
+                $"Found {seen} USB power instances but none could be updated (access denied?).");
+        }
+    }
+
+    private static void TrySetUsbSelectiveSuspendPowerCfg(bool enabled)
+    {
+        const string UsbSubgroup = "2a737bb5-f847-439b-8109-961c8acba9d3";
+        const string UsbSelectiveSuspend = "48e6b7a6-50f5-4782-a5d4-53bb8f07e226";
+        var value = enabled ? "1" : "0";
+        var powercfg = Path.Combine(Environment.SystemDirectory, "powercfg.exe");
+
+        // Ignore failures — setting may not exist on the active scheme.
+        _ = RunHidden(powercfg, $"/SETACVALUEINDEX SCHEME_CURRENT {UsbSubgroup} {UsbSelectiveSuspend} {value}", throwOnError: false);
+        _ = RunHidden(powercfg, $"/SETDCVALUEINDEX SCHEME_CURRENT {UsbSubgroup} {UsbSelectiveSuspend} {value}", throwOnError: false);
+        _ = RunHidden(powercfg, "/SETACTIVE SCHEME_CURRENT", throwOnError: false);
+    }
+
+    /// <summary>
+    /// Global USB selective-suspend kill switches used when powercfg USB settings are absent.
+    /// disableSelectiveSuspend=true means power saving off.
+    /// </summary>
+    private static void SetUsbSelectiveSuspendRegistry(bool disableSelectiveSuspend)
+    {
+        var dword = disableSelectiveSuspend ? 1 : 0;
+        string[] keys =
+        [
+            @"SYSTEM\CurrentControlSet\Services\USB",
+            @"SYSTEM\CurrentControlSet\Services\usbhub",
+            @"SYSTEM\CurrentControlSet\Services\usbhub3",
+            @"SYSTEM\CurrentControlSet\Services\USBXHCI\Parameters",
+        ];
+
+        foreach (var keyPath in keys)
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(keyPath, writable: true)
+                    ?? Microsoft.Win32.Registry.LocalMachine.CreateSubKey(keyPath, writable: true);
+                key?.SetValue("DisableSelectiveSuspend", dword, Microsoft.Win32.RegistryValueKind.DWord);
+            }
+            catch
+            {
+                // Service key may not exist on all builds; skip.
+            }
+        }
+    }
+
+    private static int RunHidden(string fileName, string arguments, bool throwOnError = true)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        using var process = Process.Start(psi)
+            ?? throw new InvalidOperationException($"Failed to start {fileName}.");
+        process.StandardOutput.ReadToEnd();
+        process.StandardError.ReadToEnd();
+        if (!process.WaitForExit(15000))
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+            throw new TimeoutException($"{fileName} timed out.");
+        }
+
+        if (throwOnError && process.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"{fileName} {arguments} exited with code {process.ExitCode}.");
+        }
+
+        return process.ExitCode;
+    }
+
     private static void RunElevatedJobAndWait(string job)
     {
         var exe = Environment.ProcessPath;
@@ -208,9 +400,16 @@ public static class WindowsProtectionService
                 return;
             }
 
+            var detail = TryReadElevatedError();
+            if (process.ExitCode == 2)
+            {
+                throw new InvalidOperationException(
+                    detail ?? "Defender preference did not change (check Tamper Protection).");
+            }
+
             throw new InvalidOperationException(
-                process.ExitCode == 2
-                    ? "Defender preference did not change (check Tamper Protection)."
+                detail is not null
+                    ? $"Elevated job '{job}' failed: {detail}"
                     : $"Elevated job '{job}' failed with exit code {process.ExitCode}.");
         }
         catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)

@@ -2,9 +2,12 @@ using System.Collections.ObjectModel;
 using SimpitLauncher.Dialogs;
 using SimpitLauncher.Models;
 using SimpitLauncher.Services;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Windows.System;
+using Windows.UI.Core;
 
 namespace SimpitLauncher;
 
@@ -382,6 +385,12 @@ public sealed partial class MainPage : Page
     private async void AddWebhook_Click(object sender, RoutedEventArgs e) =>
         await AddOrEditAsync(null, TaskKind.Webhook);
 
+    private async void AddShelly_Click(object sender, RoutedEventArgs e) =>
+        await AddOrEditAsync(null, TaskKind.Shelly);
+
+    private async void AddComCommand_Click(object sender, RoutedEventArgs e) =>
+        await AddOrEditAsync(null, TaskKind.ComCommand);
+
     private async void AddBuiltin_Click(object sender, RoutedEventArgs e) =>
         await AddOrEditAsync(null, TaskKind.Builtin);
 
@@ -499,9 +508,15 @@ public sealed partial class MainPage : Page
         }
 
         var index = _tasks.IndexOf(entry);
-        if (index > 0)
+        if (index <= 0)
         {
-            _tasks.Move(index, index - 1);
+            return;
+        }
+
+        var target = IsControlPressed() ? 0 : index - 1;
+        if (target != index)
+        {
+            _tasks.Move(index, target);
             Persist();
         }
     }
@@ -514,11 +529,23 @@ public sealed partial class MainPage : Page
         }
 
         var index = _tasks.IndexOf(entry);
-        if (index >= 0 && index < _tasks.Count - 1)
+        if (index < 0 || index >= _tasks.Count - 1)
         {
-            _tasks.Move(index, index + 1);
+            return;
+        }
+
+        var target = IsControlPressed() ? _tasks.Count - 1 : index + 1;
+        if (target != index)
+        {
+            _tasks.Move(index, target);
             Persist();
         }
+    }
+
+    private static bool IsControlPressed()
+    {
+        var state = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control);
+        return state.HasFlag(CoreVirtualKeyStates.Down);
     }
 
     private void TaskList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args) => Persist();

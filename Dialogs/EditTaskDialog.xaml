@@ -36,6 +36,8 @@
                 HorizontalAlignment="Stretch">
                 <ComboBoxItem Content="Executable" Tag="Executable" />
                 <ComboBoxItem Content="Webhook" Tag="Webhook" />
+                <ComboBoxItem Content="Shelly" Tag="Shelly" />
+                <ComboBoxItem Content="COM command" Tag="ComCommand" />
                 <ComboBoxItem Content="System (built-in)" Tag="Builtin" />
             </ComboBox>
 
@@ -76,6 +78,45 @@
                 <TextBox x:Name="StopUrlBox" Header="Stop URL" />
             </StackPanel>
 
+            <StackPanel x:Name="ShellyPanel" Spacing="10" Visibility="Collapsed">
+                <TextBox
+                    x:Name="ShellyIpBox"
+                    Header="IP address"
+                    PlaceholderText="192.168.1.50" />
+                <TextBlock
+                    Text="Start: http://&lt;IP&gt;/relay/0?turn=on&#x0a;Stop: http://&lt;IP&gt;/relay/0?turn=off"
+                    TextWrapping="Wrap"
+                    Opacity="0.8"
+                    FontSize="12" />
+            </StackPanel>
+
+            <StackPanel x:Name="ComPanel" Spacing="10" Visibility="Collapsed">
+                <TextBox
+                    x:Name="ComPortBox"
+                    Header="COM port"
+                    PlaceholderText="COM13" />
+                <NumberBox
+                    x:Name="ComBaudBox"
+                    Header="Baud rate (0 = leave unchanged)"
+                    Minimum="0"
+                    Maximum="3000000"
+                    Value="0"
+                    SpinButtonPlacementMode="Inline" />
+                <TextBox
+                    x:Name="ComStartBox"
+                    Header="Start text (empty = skip)"
+                    PlaceholderText="POWERON" />
+                <TextBox
+                    x:Name="ComStopBox"
+                    Header="Stop text (empty = skip)"
+                    PlaceholderText="POWEROFF" />
+                <TextBlock
+                    Text="Matches cmd: echo TEXT &gt; \\.\COMn — writes ASCII and appends CRLF if missing. Escapes: \r \n \t \\"
+                    TextWrapping="Wrap"
+                    Opacity="0.8"
+                    FontSize="12" />
+            </StackPanel>
+
             <StackPanel x:Name="BuiltinPanel" Spacing="10" Visibility="Collapsed">
                 <ComboBox
                     x:Name="BuiltinBox"
@@ -84,9 +125,15 @@
                     SelectionChanged="BuiltinBox_SelectionChanged">
                     <ComboBoxItem Content="Disable firewall" Tag="DisableFirewall" />
                     <ComboBoxItem Content="Disable Realtime Threat Scanning" Tag="DisableRealtimeScanning" />
+                    <ComboBoxItem Content="Disable USB power saving" Tag="DisableUsbPowerSaving" />
                     <ComboBoxItem Content="Max CPU performance" Tag="MaxCpuPerformance" />
                     <ComboBoxItem Content="Max GPU performance" Tag="MaxGpuPerformance" />
                 </ComboBox>
+                <CheckBox
+                    x:Name="DisableStopBox"
+                    Content="Disable stop action"
+                    Checked="DisableStopBox_Changed"
+                    Unchecked="DisableStopBox_Changed" />
                 <NumberBox
                     x:Name="GpuWattsBox"
                     Header="GPU start power limit (watts)"

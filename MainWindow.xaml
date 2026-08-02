@@ -20,7 +20,7 @@
 
         <TitleBar x:Name="AppTitleBar" Title="Simpit Launcher">
             <TitleBar.IconSource>
-                <ImageIconSource ImageSource="Assets/AppIcon.ico" />
+                <ImageIconSource ImageSource="Assets/AppIcon.png" />
             </TitleBar.IconSource>
         </TitleBar>
 

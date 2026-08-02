@@ -44,6 +44,12 @@
             <Setter Property="MinHeight" Value="32" />
             <Setter Property="CornerRadius" Value="6" />
         </Style>
+        <Style x:Key="EntryDeleteIconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="MinWidth" Value="36" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
     </Page.Resources>
 
     <Grid Padding="16" RowSpacing="12">
@@ -201,6 +207,17 @@
                     </SelectorBar>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <DropDownButton Content="Add">
+                            <DropDownButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Executable" Click="AddExecutable_Click" />
+                                    <MenuFlyoutItem Text="Webhook" Click="AddWebhook_Click" />
+                                    <MenuFlyoutItem Text="Shelly" Click="AddShelly_Click" />
+                                    <MenuFlyoutItem Text="COM command" Click="AddComCommand_Click" />
+                                    <MenuFlyoutItem Text="System option" Click="AddBuiltin_Click" />
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
                         <Button
                             Content="Desktop shortcuts"
                             Click="CreateDesktopShortcuts_Click"
@@ -217,12 +234,6 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="Add executable" Click="AddExecutable_Click" />
-                        <Button Content="Add webhook" Click="AddWebhook_Click" />
-                        <Button Content="Add system option" Click="AddBuiltin_Click" />
-                    </StackPanel>
 
                     <CheckBox
                         x:Name="StartOnLoginBox"
@@ -285,13 +296,13 @@
                                     Content="↑"
                                     Tag="{x:Bind}"
                                     Click="MoveUp_Click"
-                                    ToolTipService.ToolTip="Move up" />
+                                    ToolTipService.ToolTip="Move up (Ctrl+click: top)" />
                                 <Button
                                     Grid.Column="4"
                                     Content="↓"
                                     Tag="{x:Bind}"
                                     Click="MoveDown_Click"
-                                    ToolTipService.ToolTip="Move down" />
+                                    ToolTipService.ToolTip="Move down (Ctrl+click: bottom)" />
                                 <Button
                                     Grid.Column="5"
                                     Style="{StaticResource EntryStartIconButtonStyle}"
@@ -310,9 +321,12 @@
                                 </Button>
                                 <Button
                                     Grid.Column="7"
-                                    Content="Delete"
+                                    Style="{StaticResource EntryDeleteIconButtonStyle}"
                                     Tag="{x:Bind}"
-                                    Click="Delete_Click" />
+                                    Click="Delete_Click"
+                                    ToolTipService.ToolTip="Delete">
+                                    <SymbolIcon Symbol="Delete" />
+                                </Button>
                             </Grid>
                         </DataTemplate>
                     </ListView.ItemTemplate>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using SimpitLauncher.Models;
 
@@ -165,6 +166,8 @@ public sealed class TaskRunner
         return task.Kind switch
         {
             TaskKind.Webhook => await StartWebhookAsync(task, ct).ConfigureAwait(false),
+            TaskKind.Shelly => await StartShellyAsync(task, ct).ConfigureAwait(false),
+            TaskKind.ComCommand => await RunComCommandAsync(task, starting: true, ct).ConfigureAwait(false),
             TaskKind.Builtin => await RunBuiltinAsync(task, starting: true, ct).ConfigureAwait(false),
             _ => StartExecutable(task)
         };
@@ -175,6 +178,8 @@ public sealed class TaskRunner
         return task.Kind switch
         {
             TaskKind.Webhook => await StopWebhookAsync(task, ct).ConfigureAwait(false),
+            TaskKind.Shelly => await StopShellyAsync(task, ct).ConfigureAwait(false),
+            TaskKind.ComCommand => await RunComCommandAsync(task, starting: false, ct).ConfigureAwait(false),
             TaskKind.Builtin => await RunBuiltinAsync(task, starting: false, ct).ConfigureAwait(false),
             _ => StopExecutable(task)
         };
@@ -202,8 +207,217 @@ public sealed class TaskRunner
         return $"WEBHOOK [{task.Name}] GET {task.StopUrl} -> {(int)response.StatusCode}";
     }
 
+    private static async Task<string> StartShellyAsync(TaskEntry task, CancellationToken ct)
+    {
+        var url = BuildShellyUrl(task.IpAddress, turnOn: true);
+        using var response = await Http.GetAsync(url, ct).ConfigureAwait(false);
+        return $"SHELLY [{task.Name}] GET {url} -> {(int)response.StatusCode}";
+    }
+
+    private static async Task<string> StopShellyAsync(TaskEntry task, CancellationToken ct)
+    {
+        var url = BuildShellyUrl(task.IpAddress, turnOn: false);
+        using var response = await Http.GetAsync(url, ct).ConfigureAwait(false);
+        return $"SHELLY [{task.Name}] GET {url} -> {(int)response.StatusCode}";
+    }
+
+    private static string BuildShellyUrl(string ipAddress, bool turnOn)
+    {
+        var ip = (ipAddress ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(ip) || !System.Net.IPAddress.TryParse(ip, out _))
+        {
+            throw new InvalidOperationException("Shelly task requires a valid IP address.");
+        }
+
+        return $"http://{ip}/relay/0?turn={(turnOn ? "on" : "off")}";
+    }
+
+    private static async Task<string> RunComCommandAsync(TaskEntry task, bool starting, CancellationToken ct)
+    {
+        var text = starting ? task.ComStartText : task.ComStopText;
+        if (string.IsNullOrEmpty(text))
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return starting
+                ? $"SKIP [{task.Name}] no start COM text"
+                : $"SKIP [{task.Name}] no stop COM text";
+        }
+
+        var portName = NormalizeComPort(task.ComPort);
+        if (string.IsNullOrWhiteSpace(portName))
+        {
+            throw new InvalidOperationException("COM command requires a port (e.g. COM13).");
+        }
+
+        // Match `echo TEXT > \\.\COMn`: device path write, CRLF terminator, no baud change unless set.
+        var payload = DecodeEscapes(text);
+        if (!payload.EndsWith('\n') && !payload.EndsWith('\r'))
+        {
+            payload += "\r\n";
+        }
+
+        var devicePath = $@"\\.\{portName}";
+        var baud = task.ComBaudRate; // 0 = leave port settings unchanged (cmd echo behavior)
+        var bytes = Encoding.ASCII.GetBytes(payload);
+
+        await Task.Run(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            WriteComDevice(devicePath, bytes, baud);
+        }, ct).ConfigureAwait(false);
+
+        var preview = text.Length <= 40 ? text : text[..37] + "…";
+        var baudLabel = baud > 0 ? $"@{baud}" : "";
+        return $"COM [{task.Name}] {devicePath}{baudLabel} write \"{preview}\"";
+    }
+
+    /// <summary>
+    /// Writes like <c>echo … &gt; \\.\COMn</c>: open the device path and write bytes.
+    /// When baud is &lt;= 0, port settings are left alone (same as cmd redirection).
+    /// </summary>
+    private static void WriteComDevice(string devicePath, byte[] bytes, int baud)
+    {
+        if (baud > 0)
+        {
+            // Optional explicit baud: open briefly with SerialPort, avoid DTR/RTS toggles when possible.
+            var portName = devicePath.StartsWith(@"\\.\", StringComparison.Ordinal)
+                ? devicePath[4..]
+                : devicePath;
+            using var port = new System.IO.Ports.SerialPort(portName, baud)
+            {
+                Handshake = System.IO.Ports.Handshake.None,
+                DtrEnable = false,
+                RtsEnable = false,
+                WriteTimeout = 3000
+            };
+            port.Open();
+            port.Write(bytes, 0, bytes.Length);
+            Thread.Sleep(50);
+            return;
+        }
+
+        var handle = CreateFile(
+            devicePath,
+            GenericWrite,
+            0,
+            nint.Zero,
+            OpenExisting,
+            FileAttributeNormal,
+            nint.Zero);
+
+        if (handle == InvalidHandleValue || handle == nint.Zero)
+        {
+            var err = Marshal.GetLastWin32Error();
+            throw new InvalidOperationException(
+                $"Failed to open {devicePath} (Win32 {err}). Is the port in use?");
+        }
+
+        try
+        {
+            if (!WriteFile(handle, bytes, (uint)bytes.Length, out var written, nint.Zero) || written != (uint)bytes.Length)
+            {
+                var err = Marshal.GetLastWin32Error();
+                throw new InvalidOperationException($"Failed to write {devicePath} (Win32 {err}).");
+            }
+
+            _ = FlushFileBuffers(handle);
+            Thread.Sleep(50);
+        }
+        finally
+        {
+            CloseHandle(handle);
+        }
+    }
+
+    private const uint GenericWrite = 0x40000000;
+    private const uint OpenExisting = 3;
+    private const uint FileAttributeNormal = 0x00000080;
+    private static readonly nint InvalidHandleValue = new(-1);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern nint CreateFile(
+        string lpFileName,
+        uint dwDesiredAccess,
+        uint dwShareMode,
+        nint lpSecurityAttributes,
+        uint dwCreationDisposition,
+        uint dwFlagsAndAttributes,
+        nint hTemplateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool WriteFile(
+        nint hFile,
+        byte[] lpBuffer,
+        uint nNumberOfBytesToWrite,
+        out uint lpNumberOfBytesWritten,
+        nint lpOverlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool FlushFileBuffers(nint hFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(nint hObject);
+
+    private static string NormalizeComPort(string? raw)
+    {
+        var text = (raw ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        if (text.StartsWith(@"\\.\", StringComparison.OrdinalIgnoreCase))
+        {
+            text = text[4..];
+        }
+
+        if (int.TryParse(text, out var n) && n > 0)
+        {
+            return $"COM{n}";
+        }
+
+        if (text.StartsWith("COM", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(text[3..], out n) && n > 0)
+        {
+            return $"COM{n}";
+        }
+
+        return text.ToUpperInvariant();
+    }
+
+    private static string DecodeEscapes(string text)
+    {
+        var sb = new StringBuilder(text.Length);
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '\\' && i + 1 < text.Length)
+            {
+                sb.Append(text[i + 1] switch
+                {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '\\' => '\\',
+                    _ => text[i + 1]
+                });
+                i++;
+                continue;
+            }
+
+            sb.Append(text[i]);
+        }
+
+        return sb.ToString();
+    }
+
     private static async Task<string> RunBuiltinAsync(TaskEntry task, bool starting, CancellationToken ct)
     {
+        if (!starting && task.DisableStopAction)
+        {
+            await Task.CompletedTask.ConfigureAwait(false);
+            return $"SKIP [{task.Name}] stop action disabled";
+        }
+
         switch (task.BuiltinAction)
         {
             case BuiltinAction.DisableFirewall:
@@ -269,6 +483,17 @@ public sealed class TaskRunner
                     return starting
                         ? $"START ACTION [{task.Name}] nvidia-smi -pl {watts} (exit {exit})"
                         : $"STOP ACTION [{task.Name}] nvidia-smi -pl {watts} (exit {exit})";
+                }
+            case BuiltinAction.DisableUsbPowerSaving:
+                {
+                    if (starting)
+                    {
+                        WindowsProtectionService.SetUsbPowerSavingEnabled(false);
+                        return $"START ACTION [{task.Name}] USB power saving OFF (selective suspend + USB devices)";
+                    }
+
+                    WindowsProtectionService.SetUsbPowerSavingEnabled(true);
+                    return $"STOP ACTION [{task.Name}] USB power saving ON (selective suspend + USB devices)";
                 }
             default:
                 await Task.CompletedTask.ConfigureAwait(false);

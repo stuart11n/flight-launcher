@@ -4,7 +4,7 @@
   <img src="docs/screenshot.png" alt="Simpit Launcher main window" width="520" />
 </p>
 
-Windows desktop app for sim-pit setups: start and stop an ordered checklist of apps, webhooks, and system tweaks per profile (default: **Flight** and **Racing**). Replace ad-hoc batch files with one **START** / **STOP**, tray actions, or the command line.
+Windows desktop app for sim-pit setups: start and stop an ordered checklist of apps, webhooks, Shelly relays, COM commands, and system tweaks per profile (default: **Flight** and **Racing**). Replace ad-hoc batch files with one **START** / **STOP**, tray actions, or the command line.
 
 Repo: [github.com/stuart11n/simpit-launcher](https://github.com/stuart11n/simpit-launcher)
 
@@ -32,15 +32,39 @@ Repo: [github.com/stuart11n/simpit-launcher](https://github.com/stuart11n/simpit
 ### 2) Webhook
 
 - HTTP GET Start URL and/or Stop URL (either may be empty).
-- Useful for smart relays (e.g. `turn=on` / `turn=off`).
+- Useful for arbitrary HTTP endpoints.
 
-### 3) System (built-in)
+### 3) Shelly
 
-- **Disable firewall** — `INetFwPolicy2` off / on (all profiles)
-- **Disable Realtime Threat Scanning** — `MSFT_MpPreference` / WMI (`DisableRealtimeMonitoring`)  
-  Tamper Protection can block this; turn it off temporarily if the preference does not change.
-- **Max CPU performance** — `powercfg /s` High performance / Balanced
-- **Max GPU performance** — `nvidia-smi -pl` start watts / stop watts (configurable)
+- IP address only (validated).
+- **START:** `http://<IP>/relay/0?turn=on`
+- **STOP:** `http://<IP>/relay/0?turn=off`
+
+### 4) COM command
+
+- COM port (e.g. `COM17`); writes via `\\.\COMn`.
+- **START** / **STOP** each write a configured text string (either may be empty to skip).
+- Appends CRLF when the text has no trailing newline.
+- Baud rate **0** (default) leaves port settings unchanged; set a rate only to force baud.
+- Escape sequences: `\r`, `\n`, `\t`, `\\`.
+
+### 5) System (built-in)
+
+Each option has a **START** action (sim session on) and a matching **STOP** action (restore). Most need UAC once if the app is not already elevated. Check **Disable stop action** on a system task to run START only and skip restore on STOP.
+
+| Option | START | STOP |
+| --- | --- | --- |
+| **Disable firewall** | Firewall off (all profiles via `INetFwPolicy2`) | Firewall on |
+| **Disable Realtime Threat Scanning** | Defender realtime off (`MSFT_MpPreference` / `DisableRealtimeMonitoring`) | Defender realtime on |
+| **Disable USB power saving** | USB selective suspend off (registry; `powercfg` when present) + per-device USB “allow turn off to save power” unchecked (`MSPower_DeviceEnable`) | Re-enable selective suspend + per-device power saving |
+| **Max CPU performance** | `powercfg /s` High performance | `powercfg /s` Balanced |
+| **Max GPU performance** | `nvidia-smi -pl` start watts (editable) | `nvidia-smi -pl` stop watts (editable) |
+
+Notes on system options:
+
+- **Realtime Threat Scanning**: Tamper Protection can block the preference change — turn it off temporarily in Windows Security if START fails.
+- **USB power saving**: Many power schemes omit the USB `powercfg` setting; the app still applies service registry keys and per-device WMI updates.
+- **Max GPU performance**: Requires NVIDIA drivers / `nvidia-smi` on `PATH` (or discoverable).
 
 ## Main window
 
@@ -48,8 +72,10 @@ Repo: [github.com/stuart11n/simpit-launcher](https://github.com/stuart11n/simpit
 - Status refreshes on load, every 5 seconds, and after runs.
 - Progress bar + log while a run is in progress (full log on the **Log** tab).
 - **Tasks** / **Log** tabs: task list with Flight / Racing profiles, or the run log.
-- Add executable / webhook / system option.
-- Per row: enable, summary (includes `Delay Ns · …` when set), type badge, move up/down, start/stop icons, delete, drag reorder.
+- Profile toolbar (right of the tabs): **Add** dropdown (Executable, Webhook, Shelly, COM command, System option), **Desktop shortcuts**, **Rename**.
+- **Desktop shortcuts**: creates Start and Stop desktop shortcuts for the active profile.
+- Per row: enable, summary (includes `Delay Ns · …` when set), type badge, move ↑/↓, start/stop icons, delete icon, drag reorder.
+  - ↑ / ↓ move one step; **Ctrl+↑** / **Ctrl+↓** jump to top / bottom.
 - Double-click a row to edit (includes delay, Test start/stop — tests run immediately, ignoring delay).
 - Start on login (HKCU Run).
 
@@ -83,7 +109,7 @@ SimpitLauncher.exe -p flight --start
 
 ## Notes
 
-- Admin actions (firewall, Defender, some kills, `nvidia-smi`) may show UAC. Firewall/Defender use in-process COM/WMI (no console); if not elevated, the app relaunches itself briefly for those jobs.
+- Admin actions (firewall, Defender, USB power saving, some kills, `nvidia-smi`) may show UAC. Firewall/Defender/USB use in-process COM/WMI/registry (no console); if not elevated, the app relaunches itself briefly for those jobs.
 - Soft Kill may not close apps that ignore close requests; Force Kill uses `taskkill /F /T` and can retry elevated.
 - Profile tab names are stored as `modes[].name`; CLI/internal ids remain `flight` and `racing`.
 - First launch seeds a Flight list inspired by typical `flight.bat` / `off.bat` workflows; Racing starts empty.

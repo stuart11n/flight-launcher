@@ -43,6 +43,9 @@ ico_path = assets / "AppIcon.ico"
 fit_square(src, 256).save(ico_path, format="ICO", sizes=ico_sizes)
 print(f"Wrote {ico_path.name} ({ico_path.stat().st_size} bytes)")
 
+fit_square(src, 48).save(assets / "AppIcon.png", format="PNG")
+print("Wrote AppIcon.png 48x48")
+
 outputs = {
     "StoreLogo.png": 50,
     "Square44x44Logo.scale-200.png": 88,
