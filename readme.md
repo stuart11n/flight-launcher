@@ -136,6 +136,19 @@ On push/PR to `master` or `main` (and **Run workflow**):
 
 **Actions** → workflow run → **Artifacts**.
 
+### Draft release from a version tag
+
+Push a semver tag to cut a **draft** GitHub Release (installer + zip attached):
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Then open **Releases**, review the draft notes/assets, and click **Publish release**.
+
+The installer `AppVersion` is taken from the tag (e.g. `v1.2.3` → `1.2.3`).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -3,12 +3,13 @@ name: Build
 on:
   push:
     branches: [master, main]
+    tags: ["v*.*.*"]
   pull_request:
     branches: [master, main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -22,6 +23,18 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
+
+      - name: Resolve version from tag
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -match '^v(?<ver>\d+\.\d+\.\d+)') {
+            $ver = $Matches.ver
+          } else {
+            $ver = "1.0.0"
+          }
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "Installer version: $ver"
 
       - name: Restore
         run: dotnet restore .\SimpitLauncher.csproj -p:Platform=x64
@@ -46,7 +59,9 @@ jobs:
       - name: Build installer
         shell: cmd
         run: |
-          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\SimpitLauncher.iss
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\SimpitLauncher.iss /DMyAppVersion=%VERSION%
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
@@ -54,3 +69,21 @@ jobs:
           name: SimpitLauncherSetup
           path: artifacts/installer/SimpitLauncherSetup.exe
           if-no-files-found: error
+
+      - name: Zip publish folder for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          Compress-Archive -Path artifacts\publish\win-x64\* `
+            -DestinationPath artifacts\SimpitLauncher-win-x64.zip -Force
+
+      - name: Create draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          name: Simpit Launcher ${{ github.ref_name }}
+          files: |
+            artifacts/installer/SimpitLauncherSetup.exe
+            artifacts/SimpitLauncher-win-x64.zip
