@@ -13,15 +13,19 @@ public sealed partial class MainPage : Page
     private readonly TaskStore _store = new();
     private readonly TaskRunner _runner = new();
     private readonly ObservableCollection<TaskEntry> _tasks = [];
+    private readonly DispatcherTimer _statusTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private AppSettings _settings = new();
     private bool _loading;
     private bool _busy;
+    private int _statusRefreshGeneration;
 
     public MainPage()
     {
         InitializeComponent();
         TaskList.ItemsSource = _tasks;
         Loaded += MainPage_Loaded;
+        Unloaded += MainPage_Unloaded;
+        _statusTimer.Tick += StatusTimer_Tick;
     }
 
     public async Task RunStartFromTrayAsync() => await RunStartAsync();
@@ -60,7 +64,47 @@ public sealed partial class MainPage : Page
             AppendLog($"CLI profile: {mode.Name}");
         }
 
+        _statusTimer.Start();
+        _ = RefreshSystemStatusAsync();
         await ApplyLaunchOptionsAsync(options);
+    }
+
+    private void MainPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _statusTimer.Stop();
+        _statusTimer.Tick -= StatusTimer_Tick;
+    }
+
+    private void StatusTimer_Tick(object? sender, object e) => _ = RefreshSystemStatusAsync();
+
+    private async Task RefreshSystemStatusAsync()
+    {
+        var generation = Interlocked.Increment(ref _statusRefreshGeneration);
+        try
+        {
+            var snapshot = await SystemStatusService.QueryAsync();
+            if (generation != _statusRefreshGeneration)
+            {
+                return;
+            }
+
+            StatusGpuText.Text = snapshot.GpuPowerLimit;
+            StatusCpuText.Text = snapshot.CpuMode;
+            StatusFirewallText.Text = snapshot.Firewall;
+            StatusThreatText.Text = snapshot.ThreatProtection;
+        }
+        catch
+        {
+            if (generation != _statusRefreshGeneration)
+            {
+                return;
+            }
+
+            StatusGpuText.Text = "n/a";
+            StatusCpuText.Text = "n/a";
+            StatusFirewallText.Text = "n/a";
+            StatusThreatText.Text = "n/a";
+        }
     }
 
     private async Task ApplyLaunchOptionsAsync(CommandLineOptions options)
@@ -222,6 +266,7 @@ public sealed partial class MainPage : Page
         {
             SetButtonsEnabled(true);
             _busy = false;
+            _ = RefreshSystemStatusAsync();
         }
     }
 
@@ -260,6 +305,7 @@ public sealed partial class MainPage : Page
         {
             SetButtonsEnabled(true);
             _busy = false;
+            _ = RefreshSystemStatusAsync();
         }
     }
 
@@ -363,6 +409,61 @@ public sealed partial class MainPage : Page
         {
             _tasks.Remove(entry);
             Persist();
+        }
+    }
+
+    private async void EntryStart_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: TaskEntry entry })
+        {
+            await RunSingleEntryAsync(entry, starting: true);
+        }
+    }
+
+    private async void EntryStop_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: TaskEntry entry })
+        {
+            await RunSingleEntryAsync(entry, starting: false);
+        }
+    }
+
+    private async Task RunSingleEntryAsync(TaskEntry entry, bool starting)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        SetButtonsEnabled(false);
+        var action = starting ? "START" : "STOP";
+        BeginProgress(1, $"{action} {entry.Name}…");
+        AppendLog($"--- {action} entry: {entry.Name} ---");
+        var progress = new Progress<string>(line =>
+        {
+            UpdateProgress(1, 1, line);
+            AppendLog(line);
+        });
+
+        try
+        {
+            var line = starting
+                ? await _runner.RunSingleStartAsync(entry, progress)
+                : await _runner.RunSingleStopAsync(entry, progress);
+            var failed = line.Contains("ERROR", StringComparison.OrdinalIgnoreCase);
+            CompleteProgress(failed ? $"{action} failed ({entry.Name})" : $"{action} complete ({entry.Name})");
+        }
+        catch (Exception ex)
+        {
+            CompleteProgress($"{action} failed: {ex.Message}");
+            AppendLog($"{action} failed: {ex.Message}");
+        }
+        finally
+        {
+            SetButtonsEnabled(true);
+            _busy = false;
+            _ = RefreshSystemStatusAsync();
         }
     }
 

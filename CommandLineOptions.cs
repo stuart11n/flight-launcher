@@ -10,6 +10,8 @@ public sealed class CommandLineOptions
     public bool ExitAfterAction { get; init; }
     public bool Minimized { get; init; }
     public bool ShowHelp { get; init; }
+    /// <summary>Internal one-shot elevated job (firewall-on/off, defender-on/off). No UI.</summary>
+    public string? ElevatedJob { get; init; }
 
     public static CommandLineOptions Parse(string[] args)
     {
@@ -19,6 +21,7 @@ public sealed class CommandLineOptions
         var exitAfter = false;
         var minimized = false;
         var help = false;
+        string? elevatedJob = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -61,6 +64,10 @@ public sealed class CommandLineOptions
                 case "tray":
                     minimized = true;
                     break;
+                case "elevated-job":
+                    value ??= TakeNext(args, ref i);
+                    elevatedJob = value?.Trim();
+                    break;
                 case "profile":
                 case "mode":
                 case "p":
@@ -83,7 +90,8 @@ public sealed class CommandLineOptions
             Stop = stop,
             ExitAfterAction = exitAfter,
             Minimized = minimized,
-            ShowHelp = help
+            ShowHelp = help,
+            ElevatedJob = elevatedJob
         };
     }
 

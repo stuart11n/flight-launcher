@@ -242,9 +242,9 @@ public sealed partial class EditTaskDialog : ContentDialog
         BuiltinHelpText.Text = action switch
         {
             BuiltinAction.DisableFirewall =>
-                "Start action: netsh advfirewall set allprofiles state off\nStop action: netsh advfirewall set allprofiles state on",
+                "Start action: disable firewall via INetFwPolicy2 (all profiles)\nStop action: enable firewall via INetFwPolicy2\nRequires UAC once if the app is not already elevated (no console window).",
             BuiltinAction.DisableRealtimeScanning =>
-                "Start action: DisableRealtimeMonitoring=true (realtime OFF)\nStop action: DisableRealtimeMonitoring=false (realtime ON)\nRequires UAC. If start fails, turn off Tamper Protection in Windows Security.",
+                "Start action: DisableRealtimeMonitoring=true via MSFT_MpPreference (WMI)\nStop action: DisableRealtimeMonitoring=false\nRequires UAC if not elevated. If start fails, turn off Tamper Protection in Windows Security.",
             BuiltinAction.MaxCpuPerformance =>
                 "Start action: powercfg /s High performance\nStop action: powercfg /s Balanced (same command, Balanced GUID)",
             BuiltinAction.MaxGpuPerformance =>
@@ -294,7 +294,7 @@ public sealed partial class EditTaskDialog : ContentDialog
     private static string BuiltinDefaultName(BuiltinAction action) => action switch
     {
         BuiltinAction.DisableFirewall => "Disable firewall",
-        BuiltinAction.DisableRealtimeScanning => "Disable realtime scanning",
+        BuiltinAction.DisableRealtimeScanning => "Disable Realtime Threat Scanning",
         BuiltinAction.MaxCpuPerformance => "Max CPU performance",
         BuiltinAction.MaxGpuPerformance => "Max GPU performance",
         _ => "System"

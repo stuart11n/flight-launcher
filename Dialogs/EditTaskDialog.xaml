@@ -67,7 +67,7 @@
                     HorizontalAlignment="Stretch"
                     SelectionChanged="BuiltinBox_SelectionChanged">
                     <ComboBoxItem Content="Disable firewall" Tag="DisableFirewall" />
-                    <ComboBoxItem Content="Disable realtime scanning" Tag="DisableRealtimeScanning" />
+                    <ComboBoxItem Content="Disable Realtime Threat Scanning" Tag="DisableRealtimeScanning" />
                     <ComboBoxItem Content="Max CPU performance" Tag="MaxCpuPerformance" />
                     <ComboBoxItem Content="Max GPU performance" Tag="MaxGpuPerformance" />
                 </ComboBox>

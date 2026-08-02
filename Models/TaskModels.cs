@@ -74,7 +74,7 @@ public sealed class TaskEntry
                 TaskKind.Builtin => BuiltinAction switch
                 {
                     BuiltinAction.DisableFirewall => "Firewall off / on",
-                    BuiltinAction.DisableRealtimeScanning => "Defender realtime off / on",
+                    BuiltinAction.DisableRealtimeScanning => "Realtime threat scanning off / on",
                     BuiltinAction.MaxCpuPerformance => "Power plan High / Balanced",
                     BuiltinAction.MaxGpuPerformance =>
                         $"nvidia-smi -pl {GpuPowerLimitWatts} / stop {GpuStopPowerLimitWatts}",

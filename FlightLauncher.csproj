@@ -12,7 +12,7 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <UseWinUI>true</UseWinUI>
     <WinUISDKReferences>false</WinUISDKReferences>
-    <EnableMsixTooling>false</EnableMsixTooling>
+    <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -39,5 +39,25 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2526" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.3.1" />
+    <PackageReference Include="System.Management" Version="9.0.8" />
   </ItemGroup>
+
+  <!--
+    Workaround: unpackaged WinUI publish often omits the app .pri / .xbf files from PublishDir,
+    which makes the published exe exit immediately (Microsoft.UI.Xaml 0xC000027B).
+    See https://github.com/microsoft/WindowsAppSDK/issues/3451
+  -->
+  <Target Name="CopyWinUIXamlResourcesToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <_WinUiXamlResources Include="$(OutDir)**\*.xbf" />
+      <_WinUiXamlResources Include="$(OutDir)$(AssemblyName).pri" Condition="Exists('$(OutDir)$(AssemblyName).pri')" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_WinUiXamlResources)"
+      DestinationFiles="@(_WinUiXamlResources->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+    <Error
+      Text="Published output is missing $(AssemblyName).pri — WinUI will fail to start."
+      Condition="!Exists('$(PublishDir)$(AssemblyName).pri')" />
+  </Target>
 </Project>

@@ -31,6 +31,22 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
 
+$pri = Join-Path $outDir "FlightLauncher.pri"
+$xbounds = @(
+    (Join-Path $outDir "App.xbf"),
+    (Join-Path $outDir "MainPage.xbf"),
+    (Join-Path $outDir "MainWindow.xbf")
+)
+if (-not (Test-Path $pri)) {
+    throw "Publish output missing FlightLauncher.pri (WinUI will exit immediately)."
+}
+foreach ($xbf in $xbounds) {
+    if (-not (Test-Path $xbf)) {
+        throw "Publish output missing $(Split-Path $xbf -Leaf) (WinUI will exit immediately)."
+    }
+}
+
 Write-Host ""
 Write-Host "Published to: $outDir"
+Write-Host "Verified FlightLauncher.pri and XAML .xbf files are present."
 Write-Host "Run FlightLauncher.exe from that folder, or build installer\FlightLauncher.iss with Inno Setup."

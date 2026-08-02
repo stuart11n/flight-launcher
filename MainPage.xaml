@@ -16,7 +16,7 @@
             <Setter Property="FontSize" Value="22" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="28,16" />
-            <Setter Property="MinWidth" Value="160" />
+            <Setter Property="MinWidth" Value="0" />
             <Setter Property="CornerRadius" Value="8" />
         </Style>
         <Style x:Key="StopButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
@@ -25,8 +25,24 @@
             <Setter Property="FontSize" Value="22" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="28,16" />
-            <Setter Property="MinWidth" Value="160" />
+            <Setter Property="MinWidth" Value="0" />
             <Setter Property="CornerRadius" Value="8" />
+        </Style>
+        <Style x:Key="EntryStartIconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Setter Property="Background" Value="#2E7D32" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="MinWidth" Value="36" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style x:Key="EntryStopIconButtonStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Setter Property="Background" Value="#C62828" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="MinWidth" Value="36" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="CornerRadius" Value="6" />
         </Style>
     </Page.Resources>
 
@@ -40,33 +56,120 @@
             <RowDefinition Height="160" />
         </Grid.RowDefinitions>
 
-        <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
-                <Button
-                    x:Name="StartButton"
-                    Content="START"
-                    Style="{StaticResource StartButtonStyle}"
-                    Click="StartButton_Click" />
-                <Button
-                    x:Name="StopButton"
-                    Content="STOP"
-                    Style="{StaticResource StopButtonStyle}"
-                    Click="StopButton_Click" />
+        <Grid ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Spacing="10" VerticalAlignment="Top" HorizontalAlignment="Stretch">
+                <Grid ColumnSpacing="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        x:Name="StartButton"
+                        Grid.Column="0"
+                        Content="START"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource StartButtonStyle}"
+                        Click="StartButton_Click" />
+                    <Button
+                        x:Name="StopButton"
+                        Grid.Column="1"
+                        Content="STOP"
+                        HorizontalAlignment="Stretch"
+                        Style="{StaticResource StopButtonStyle}"
+                        Click="StopButton_Click" />
+                </Grid>
+                <ProgressBar
+                    x:Name="RunProgressBar"
+                    Minimum="0"
+                    Maximum="100"
+                    Value="0"
+                    Height="8"
+                    IsIndeterminate="False" />
+                <TextBlock
+                    x:Name="RunProgressText"
+                    HorizontalAlignment="Left"
+                    Opacity="0.75"
+                    FontSize="12"
+                    Text="" />
             </StackPanel>
-            <ProgressBar
-                x:Name="RunProgressBar"
-                Minimum="0"
-                Maximum="100"
-                Value="0"
-                Height="8"
-                IsIndeterminate="False" />
-            <TextBlock
-                x:Name="RunProgressText"
-                HorizontalAlignment="Center"
-                Opacity="0.75"
-                FontSize="12"
-                Text="" />
-        </StackPanel>
+
+            <Border
+                Grid.Column="1"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Padding="12,8"
+                CornerRadius="8"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1">
+                <Grid ColumnSpacing="16" RowSpacing="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.ColumnSpan="2"
+                        Text="Status"
+                        FontWeight="SemiBold"
+                        FontSize="12"
+                        Margin="0,0,0,2"
+                        Opacity="0.85" />
+
+                    <TextBlock Grid.Row="1" Text="GPU" Opacity="0.65" FontSize="12" />
+                    <TextBlock
+                        x:Name="StatusGpuText"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Text="…"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        HorizontalAlignment="Left" />
+
+                    <TextBlock Grid.Row="2" Text="CPU" Opacity="0.65" FontSize="12" />
+                    <TextBlock
+                        x:Name="StatusCpuText"
+                        Grid.Row="2"
+                        Grid.Column="1"
+                        Text="…"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        HorizontalAlignment="Left" />
+
+                    <TextBlock Grid.Row="3" Text="Firewall" Opacity="0.65" FontSize="12" />
+                    <TextBlock
+                        x:Name="StatusFirewallText"
+                        Grid.Row="3"
+                        Grid.Column="1"
+                        Text="…"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        HorizontalAlignment="Left" />
+
+                    <TextBlock Grid.Row="4" Text="Realtime Threat Scanning" Opacity="0.65" FontSize="12" />
+                    <TextBlock
+                        x:Name="StatusThreatText"
+                        Grid.Row="4"
+                        Grid.Column="1"
+                        Text="…"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        HorizontalAlignment="Left" />
+                </Grid>
+            </Border>
+        </Grid>
 
         <Grid Grid.Row="1" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
@@ -128,6 +231,8 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <CheckBox
@@ -169,6 +274,22 @@
                             ToolTipService.ToolTip="Move down" />
                         <Button
                             Grid.Column="5"
+                            Style="{StaticResource EntryStartIconButtonStyle}"
+                            Tag="{x:Bind}"
+                            Click="EntryStart_Click"
+                            ToolTipService.ToolTip="Start this entry">
+                            <SymbolIcon Symbol="Play" Foreground="White" />
+                        </Button>
+                        <Button
+                            Grid.Column="6"
+                            Style="{StaticResource EntryStopIconButtonStyle}"
+                            Tag="{x:Bind}"
+                            Click="EntryStop_Click"
+                            ToolTipService.ToolTip="Stop this entry">
+                            <SymbolIcon Symbol="Stop" Foreground="White" />
+                        </Button>
+                        <Button
+                            Grid.Column="7"
                             Content="Delete"
                             Tag="{x:Bind}"
                             Click="Delete_Click" />

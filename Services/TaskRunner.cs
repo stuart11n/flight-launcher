@@ -59,6 +59,43 @@ public sealed class TaskRunner
         return log.ToString();
     }
 
+    public async Task<string> RunSingleStartAsync(TaskEntry task, IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var line = await StartOneAsync(task, ct).ConfigureAwait(false);
+            progress?.Report(line);
+            return line;
+        }
+        catch (Exception ex)
+        {
+            var line = $"ERROR [{task.Name}] {ex.Message}";
+            progress?.Report(line);
+            return line;
+        }
+    }
+
+    public async Task<string> RunSingleStopAsync(TaskEntry task, IProgress<string>? progress = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var line = await StopOneAsync(task, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                line = $"SKIP [{task.Name}]";
+            }
+
+            progress?.Report(line);
+            return line;
+        }
+        catch (Exception ex)
+        {
+            var line = $"ERROR [{task.Name}] {ex.Message}";
+            progress?.Report(line);
+            return line;
+        }
+    }
+
     private static async Task<string> StartOneAsync(TaskEntry task, CancellationToken ct)
     {
         return task.Kind switch
@@ -110,13 +147,13 @@ public sealed class TaskRunner
                     // Session START disables firewall; session STOP re-enables it (matches flight.bat / off.bat).
                     if (starting)
                     {
-                        var exit = RunElevatedNetsh("advfirewall set allprofiles state off");
-                        return $"START ACTION [{task.Name}] firewall OFF (netsh allprofiles state off, exit {exit})";
+                        WindowsProtectionService.SetFirewallEnabled(false);
+                        return $"START ACTION [{task.Name}] firewall OFF (INetFwPolicy2)";
                     }
                     else
                     {
-                        var exit = RunElevatedNetsh("advfirewall set allprofiles state on");
-                        return $"STOP ACTION [{task.Name}] firewall ON (netsh allprofiles state on, exit {exit})";
+                        WindowsProtectionService.SetFirewallEnabled(true);
+                        return $"STOP ACTION [{task.Name}] firewall ON (INetFwPolicy2)";
                     }
                 }
             case BuiltinAction.DisableRealtimeScanning:
@@ -124,13 +161,13 @@ public sealed class TaskRunner
                     // Session START disables Defender realtime; session STOP re-enables it (matches flight.bat / off.bat).
                     if (starting)
                     {
-                        RunElevatedDefenderRealtime(disabled: true);
-                        return $"START ACTION [{task.Name}] Defender realtime OFF (DisableRealtimeMonitoring=true)";
+                        WindowsProtectionService.SetDefenderRealtimeDisabled(disabled: true);
+                        return $"START ACTION [{task.Name}] Defender realtime OFF (MSFT_MpPreference)";
                     }
                     else
                     {
-                        RunElevatedDefenderRealtime(disabled: false);
-                        return $"STOP ACTION [{task.Name}] Defender realtime ON (DisableRealtimeMonitoring=false)";
+                        WindowsProtectionService.SetDefenderRealtimeDisabled(disabled: false);
+                        return $"STOP ACTION [{task.Name}] Defender realtime ON (MSFT_MpPreference)";
                     }
                 }
             case BuiltinAction.MaxCpuPerformance:
@@ -394,51 +431,6 @@ public sealed class TaskRunner
         }
     }
 
-    private static int RunElevatedNetsh(string arguments)
-    {
-        var netsh = Path.Combine(Environment.SystemDirectory, "netsh.exe");
-        var exit = RunElevatedProcess(netsh, arguments);
-        if (exit is null)
-        {
-            throw new InvalidOperationException("UAC cancelled or failed to start netsh.");
-        }
-
-        if (exit != 0)
-        {
-            throw new InvalidOperationException($"netsh exited with code {exit}.");
-        }
-
-        return exit.Value;
-    }
-
-    private static void RunElevatedDefenderRealtime(bool disabled)
-    {
-        var ps = Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe");
-        var flag = disabled ? "$true" : "$false";
-        // EncodedCommand avoids ShellExecute quoting issues; verify the preference actually stuck.
-        var script =
-            $"Set-MpPreference -DisableRealtimeMonitoring:{flag}; " +
-            "if (-not $?) { exit 1 }; " +
-            "$pref = Get-MpPreference; " +
-            $"if ($pref.DisableRealtimeMonitoring -ne {flag}) {{ " +
-            "Write-Error 'Preference did not change (Tamper Protection may be blocking).'; exit 2 }";
-        var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-        var exit = RunElevatedProcess(ps, $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}");
-        if (exit is null)
-        {
-            throw new InvalidOperationException("UAC cancelled or failed to start PowerShell.");
-        }
-
-        if (exit != 0)
-        {
-            throw new InvalidOperationException(
-                exit == 2
-                    ? "Defender preference did not change (check Tamper Protection)."
-                    : $"PowerShell exited with code {exit}.");
-        }
-    }
-
-    /// <returns>Exit code, or null if the process could not be started / UAC cancelled.</returns>
     private static int? RunElevatedProcess(string fileName, string arguments) =>
         StartProcess(fileName, arguments, runAsAdmin: true, redirect: false);
 

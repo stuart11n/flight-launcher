@@ -1,4 +1,5 @@
-﻿using Microsoft.UI.Xaml;
+﻿using FlightLauncher.Services;
+using Microsoft.UI.Xaml;
 
 namespace FlightLauncher;
 
@@ -17,6 +18,14 @@ public partial class App : Application
         // Unpackaged WinUI: custom switches come from the process command line.
         var argv = Environment.GetCommandLineArgs().Skip(1).ToArray();
         LaunchOptions = CommandLineOptions.Parse(argv);
+
+        // One-shot elevated helper (firewall/Defender COM+WMI). No window.
+        if (!string.IsNullOrWhiteSpace(LaunchOptions.ElevatedJob))
+        {
+            var code = WindowsProtectionService.ExecuteElevatedJob(LaunchOptions.ElevatedJob);
+            Environment.Exit(code);
+            return;
+        }
 
         MainWindow = new MainWindow();
         MainWindow.Activate();

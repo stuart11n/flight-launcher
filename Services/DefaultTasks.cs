@@ -82,7 +82,7 @@ public static class DefaultTasks
                 stopMode: StopMode.CommandLine,
                 stopCommand: @"call ""C:\Program Files (x86)\SimHub\ShellMacros\tv-off.bat"""),
 
-            Builtin("Disable realtime scanning", BuiltinAction.DisableRealtimeScanning),
+            Builtin("Disable Realtime Threat Scanning", BuiltinAction.DisableRealtimeScanning),
             Builtin("Disable firewall", BuiltinAction.DisableFirewall),
             Builtin("Max GPU performance", BuiltinAction.MaxGpuPerformance, gpuWatts: 352),
 
