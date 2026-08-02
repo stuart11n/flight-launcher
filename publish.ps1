@@ -15,6 +15,16 @@ if (Test-Path $outDir) {
     Remove-Item $outDir -Recurse -Force
 }
 
+# A prior non-self-contained `dotnet build` leaves a tiny FlightLauncher.pri that
+# incremental publish will reuse. That PRI lacks merged WinUI resources and the
+# published exe exits immediately. Clean so WindowsAppSDKSelfContained can emit
+# the full merged PRI.
+Write-Host "Cleaning $Configuration outputs so the merged WinUI PRI is regenerated..."
+dotnet clean .\FlightLauncher.csproj -c $Configuration -p:Platform=x64 --nologo
+if ($LASTEXITCODE -ne 0) {
+    throw "dotnet clean failed with exit code $LASTEXITCODE"
+}
+
 Write-Host "Publishing self-contained win-x64 ($Configuration)..."
 dotnet publish .\FlightLauncher.csproj `
     -c $Configuration `
@@ -42,7 +52,7 @@ if (-not (Test-Path $pri)) {
 }
 $priLen = (Get-Item $pri).Length
 if ($priLen -lt 100000) {
-    throw "FlightLauncher.pri is only $priLen bytes; expected a merged publish PRI (>100KB). Overwriting with the tiny build PRI breaks startup."
+    throw "FlightLauncher.pri is only $priLen bytes; expected a merged publish PRI (>100KB)."
 }
 foreach ($xbf in $xbounds) {
     if (-not (Test-Path $xbf)) {
