@@ -43,14 +43,15 @@
   </ItemGroup>
 
   <!--
-    Workaround: unpackaged WinUI publish often omits the app .pri / .xbf files from PublishDir,
-    which makes the published exe exit immediately (Microsoft.UI.Xaml 0xC000027B).
+    Workaround: unpackaged WinUI publish often omits compiled XAML (.xbf) from PublishDir.
+    Copy those from OutDir. Do NOT copy $(AssemblyName).pri from OutDir — self-contained
+    publish already emits a merged PRI; overwriting it with the tiny build PRI makes the
+    app exit immediately (Microsoft.UI.Xaml 0xC000027B).
     See https://github.com/microsoft/WindowsAppSDK/issues/3451
   -->
   <Target Name="CopyWinUIXamlResourcesToPublish" AfterTargets="Publish">
     <ItemGroup>
       <_WinUiXamlResources Include="$(OutDir)**\*.xbf" />
-      <_WinUiXamlResources Include="$(OutDir)$(AssemblyName).pri" Condition="Exists('$(OutDir)$(AssemblyName).pri')" />
     </ItemGroup>
     <Copy
       SourceFiles="@(_WinUiXamlResources)"

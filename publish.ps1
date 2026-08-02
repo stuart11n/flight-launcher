@@ -40,13 +40,18 @@ $xbounds = @(
 if (-not (Test-Path $pri)) {
     throw "Publish output missing FlightLauncher.pri (WinUI will exit immediately)."
 }
+$priLen = (Get-Item $pri).Length
+if ($priLen -lt 100000) {
+    throw "FlightLauncher.pri is only $priLen bytes; expected a merged publish PRI (>100KB). Overwriting with the tiny build PRI breaks startup."
+}
 foreach ($xbf in $xbounds) {
     if (-not (Test-Path $xbf)) {
-        throw "Publish output missing $(Split-Path $xbf -Leaf) (WinUI will exit immediately)."
+        $name = Split-Path $xbf -Leaf
+        throw "Publish output missing $name (WinUI will exit immediately)."
     }
 }
 
 Write-Host ""
 Write-Host "Published to: $outDir"
-Write-Host "Verified FlightLauncher.pri and XAML .xbf files are present."
+Write-Host "Verified FlightLauncher.pri ($priLen bytes) and XAML .xbf files are present."
 Write-Host "Run FlightLauncher.exe from that folder, or build installer\FlightLauncher.iss with Inno Setup."
