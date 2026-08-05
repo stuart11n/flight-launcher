@@ -176,7 +176,9 @@ public sealed partial class MainWindow : Window
         AppWindow.Hide();
     }
 
-    private void ShowFromTray()
+    private void ShowFromTray() => BringToFront();
+
+    public void BringToFront()
     {
         AppWindow.Show();
         Activate();

@@ -27,13 +27,43 @@ public partial class App : Application
             return;
         }
 
+        // Single interactive UI instance. CLI --start/--stop (also /start /stop) may run alongside.
+        var allowParallel = LaunchOptions.Start || LaunchOptions.Stop;
+        if (!allowParallel && !SingleInstanceService.TryAcquire())
+        {
+            SingleInstanceService.SignalActivate();
+            Environment.Exit(0);
+            return;
+        }
+
         // Keep the running app's taskbar identity separate from Start/Stop desktop shortcuts.
         AppIdentity.SetProcessAppUserModelId();
 
         MainWindow = new MainWindow();
         MainWindow.Activate();
 
-        if (LaunchOptions.Minimized)
+        if (!allowParallel)
+        {
+            SingleInstanceService.StartActivateListener(() =>
+            {
+                MainWindow?.DispatcherQueue.TryEnqueue(() => MainWindow?.BringToFront());
+            });
+        }
+
+        var startMinimized = LaunchOptions.Minimized;
+        if (!startMinimized)
+        {
+            try
+            {
+                startMinimized = new TaskStore().Load().StartMinimized;
+            }
+            catch
+            {
+                // Settings load is best-effort for launch minimize.
+            }
+        }
+
+        if (startMinimized)
         {
             MainWindow.HideToTrayFromLaunch();
         }

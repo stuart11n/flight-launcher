@@ -14,7 +14,7 @@ public static class StartupService
         return HasValue(key, ValueName) || HasValue(key, LegacyValueName);
     }
 
-    public static void SetEnabled(bool enabled)
+    public static void SetEnabled(bool enabled, bool startMinimized = false)
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
             ?? Registry.CurrentUser.CreateSubKey(RunKeyPath);
@@ -39,7 +39,8 @@ public static class StartupService
             throw new InvalidOperationException("Could not resolve application path for startup registration.");
         }
 
-        key.SetValue(ValueName, $"\"{exe}\"");
+        var command = startMinimized ? $"\"{exe}\" --minimized" : $"\"{exe}\"";
+        key.SetValue(ValueName, command);
     }
 
     private static bool HasValue(RegistryKey? key, string name) =>

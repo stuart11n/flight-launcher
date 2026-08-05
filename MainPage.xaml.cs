@@ -41,6 +41,7 @@ public sealed partial class MainPage : Page
         _settings = _store.Load();
         _settings.EnsureModes();
         StartOnLoginBox.IsChecked = _settings.StartOnLogin || StartupService.IsEnabled();
+        StartMinimizedBox.IsChecked = _settings.StartMinimized;
 
         var options = App.LaunchOptions;
         if (options.ShowHelp)
@@ -69,6 +70,7 @@ public sealed partial class MainPage : Page
 
         _statusTimer.Start();
         _ = RefreshSystemStatusAsync();
+        await ApplyLaunchPerformanceRestoreAsync(options);
         await ApplyLaunchOptionsAsync(options);
     }
 
@@ -107,6 +109,45 @@ public sealed partial class MainPage : Page
             StatusCpuText.Text = "n/a";
             StatusFirewallText.Text = "n/a";
             StatusThreatText.Text = "n/a";
+        }
+    }
+
+    private async Task ApplyLaunchPerformanceRestoreAsync(CommandLineOptions options)
+    {
+        // CLI --start/--stop already run the full sequence; avoid double UAC / conflicting actions.
+        if (options.Start || options.Stop)
+        {
+            return;
+        }
+
+        var toRestore = _tasks
+            .Where(t =>
+                t.Enabled
+                && t.Kind == TaskKind.Builtin
+                && !t.DisableStopAction
+                && t.BuiltinAction is BuiltinAction.MaxCpuPerformance
+                    or BuiltinAction.MaxGpuPerformance
+                    or BuiltinAction.DisableFirewall
+                    or BuiltinAction.DisableRealtimeScanning)
+            .Select(t =>
+            {
+                var copy = t.Clone();
+                copy.DelaySeconds = 0;
+                return copy;
+            })
+            .ToList();
+
+        if (toRestore.Count == 0)
+        {
+            return;
+        }
+
+        await Task.Yield();
+        AppendLog("--- Launch: restore system options (stop actions) ---");
+
+        foreach (var entry in toRestore)
+        {
+            await RunSingleEntryAsync(entry, starting: false);
         }
     }
 
@@ -566,9 +607,10 @@ public sealed partial class MainPage : Page
         }
 
         var enabled = StartOnLoginBox.IsChecked == true;
+        var startMinimized = StartMinimizedBox.IsChecked == true;
         try
         {
-            StartupService.SetEnabled(enabled);
+            StartupService.SetEnabled(enabled, startMinimized);
             _settings.StartOnLogin = enabled;
             Persist();
             AppendLog(enabled ? "Start on login enabled" : "Start on login disabled");
@@ -582,6 +624,32 @@ public sealed partial class MainPage : Page
         }
     }
 
+    private void StartMinimizedBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        var startMinimized = StartMinimizedBox.IsChecked == true;
+        _settings.StartMinimized = startMinimized;
+
+        if (StartOnLoginBox.IsChecked == true)
+        {
+            try
+            {
+                StartupService.SetEnabled(true, startMinimized);
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Start on login update failed: {ex.Message}");
+            }
+        }
+
+        Persist();
+        AppendLog(startMinimized ? "Start minimized enabled" : "Start minimized disabled");
+    }
+
     private void Persist()
     {
         _settings.EnsureModes();
@@ -589,6 +657,7 @@ public sealed partial class MainPage : Page
         mode.Tasks = _tasks.ToList();
         _settings.ActiveModeId = mode.Id;
         _settings.StartOnLogin = StartOnLoginBox.IsChecked == true;
+        _settings.StartMinimized = StartMinimizedBox.IsChecked == true;
         _store.Save(_settings);
     }
 

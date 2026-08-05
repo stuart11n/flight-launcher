@@ -190,6 +190,7 @@ public sealed class AppSettings
     public const string RacingModeId = "racing";
 
     public bool StartOnLogin { get; set; }
+    public bool StartMinimized { get; set; }
     public string ActiveModeId { get; set; } = FlightModeId;
     public List<ModeConfig> Modes { get; set; } = [];
 
