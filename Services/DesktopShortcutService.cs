@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -9,8 +10,8 @@ public static class DesktopShortcutService
     {
         var exe = ResolveExePath();
         var workDir = Path.GetDirectoryName(exe) ?? AppContext.BaseDirectory;
-        var startIcon = ResolveAssetIcon(workDir, "StartShortcut.ico");
-        var stopIcon = ResolveAssetIcon(workDir, "StopShortcut.ico");
+        var startIcon = EnsureShortcutIcon("StartShortcut.ico");
+        var stopIcon = EnsureShortcutIcon("StopShortcut.ico");
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         Directory.CreateDirectory(desktop);
 
@@ -68,7 +69,7 @@ public static class DesktopShortcutService
             }
             else
             {
-                shortcut.IconLocation = $"{targetPath},0";
+                throw new InvalidOperationException($"Shortcut icon not found: {iconPath}");
             }
 
             shortcut.Save();
@@ -96,17 +97,42 @@ public static class DesktopShortcutService
         return exe;
     }
 
-    private static string ResolveAssetIcon(string workDir, string fileName)
+    /// <summary>
+    /// Returns a stable on-disk .ico path for shortcut IconLocation.
+    /// Prefers installed Assets\, otherwise extracts the embedded play/stop icon.
+    /// </summary>
+    private static string EnsureShortcutIcon(string fileName)
     {
-        var candidates = new[]
+        var workDir = Path.GetDirectoryName(ResolveExePath()) ?? AppContext.BaseDirectory;
+        foreach (var candidate in new[]
+                 {
+                     Path.Combine(workDir, "Assets", fileName),
+                     Path.Combine(AppContext.BaseDirectory, "Assets", fileName)
+                 })
         {
-            Path.Combine(workDir, "Assets", fileName),
-            Path.Combine(AppContext.BaseDirectory, "Assets", fileName),
-            Path.Combine(workDir, fileName)
-        };
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
 
-        return candidates.FirstOrDefault(File.Exists)
-            ?? Path.Combine(workDir, "Assets", "AppIcon.ico");
+        var cacheDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "SimpitLauncher",
+            "Icons");
+        Directory.CreateDirectory(cacheDir);
+        var dest = Path.Combine(cacheDir, fileName);
+
+        var resourceName = $"SimpitLauncher.Assets.{fileName}";
+        var asm = Assembly.GetExecutingAssembly();
+        using var stream = asm.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded icon missing: {resourceName}");
+        using (var fs = File.Create(dest))
+        {
+            stream.CopyTo(fs);
+        }
+
+        return dest;
     }
 
     private static string SanitizeFileName(string name)

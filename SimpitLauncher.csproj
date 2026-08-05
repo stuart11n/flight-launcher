@@ -31,9 +31,15 @@
     <Content Include="Assets\StoreLogo.png" />
     <Content Include="Assets\AppIcon.ico" />
     <Content Include="Assets\AppIcon.png" />
-    <Content Include="Assets\StartShortcut.ico" />
-    <Content Include="Assets\StopShortcut.ico" />
+    <!-- Loose files required for .lnk IconLocation (WinUI PRI does not expose these on disk). -->
+    <Content Include="Assets\StartShortcut.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\StopShortcut.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\StartShortcut.ico" LogicalName="SimpitLauncher.Assets.StartShortcut.ico" />
+    <EmbeddedResource Include="Assets\StopShortcut.ico" LogicalName="SimpitLauncher.Assets.StopShortcut.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -61,6 +67,14 @@
     <Copy
       SourceFiles="@(_WinUiXamlResources)"
       DestinationFiles="@(_WinUiXamlResources->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <_ShortcutIcons Include="$(MSBuildProjectDirectory)\Assets\StartShortcut.ico" />
+      <_ShortcutIcons Include="$(MSBuildProjectDirectory)\Assets\StopShortcut.ico" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_ShortcutIcons)"
+      DestinationFolder="$(PublishDir)Assets"
       SkipUnchangedFiles="true" />
     <Error
       Text="Published output is missing $(AssemblyName).pri — WinUI will fail to start."
