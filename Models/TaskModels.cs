@@ -93,9 +93,7 @@ public sealed class TaskEntry
                 TaskKind.Webhook => string.IsNullOrWhiteSpace(StartUrl)
                     ? (string.IsNullOrWhiteSpace(StopUrl) ? "(no URL)" : $"Stop: {StopUrl}")
                     : StartUrl,
-                TaskKind.Shelly => string.IsNullOrWhiteSpace(IpAddress)
-                    ? "(no IP)"
-                    : $"http://{IpAddress}/relay/0?turn=on|off",
+                TaskKind.Shelly => ShellySummary(),
                 TaskKind.ComCommand => ComSummary(),
                 TaskKind.Builtin => BuiltinSummary(),
                 _ => string.IsNullOrWhiteSpace(Path)
@@ -107,6 +105,64 @@ public sealed class TaskEntry
 
             return DelaySeconds > 0 ? $"Delay {DelaySeconds}s · {body}" : body;
         }
+    }
+
+    private string ShellySummary()
+    {
+        var ip = ResolveShellyIp();
+        return string.IsNullOrWhiteSpace(ip) ? "(no IP)" : $"http://{ip}/relay/0?turn=on|off";
+    }
+
+    /// <summary>
+    /// Shelly IP from <see cref="IpAddress"/>, or extracted from legacy Start/Stop webhook URLs.
+    /// </summary>
+    public string ResolveShellyIp()
+    {
+        var direct = (IpAddress ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(direct) && System.Net.IPAddress.TryParse(direct, out _))
+        {
+            return direct;
+        }
+
+        return TryExtractIpFromUrl(StartUrl) ?? TryExtractIpFromUrl(StopUrl) ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Copies a valid IP from legacy Start/Stop URLs into <see cref="IpAddress"/> when missing.
+    /// </summary>
+    public bool TryMigrateShellyIpFromUrls()
+    {
+        if (Kind != TaskKind.Shelly || !string.IsNullOrWhiteSpace(IpAddress))
+        {
+            return false;
+        }
+
+        var ip = ResolveShellyIp();
+        if (string.IsNullOrWhiteSpace(ip))
+        {
+            return false;
+        }
+
+        IpAddress = ip;
+        return true;
+    }
+
+    private static string? TryExtractIpFromUrl(string? url)
+    {
+        var text = (url ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(text.Contains("://", StringComparison.Ordinal) ? text : $"http://{text}",
+                UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var host = uri.Host;
+        return System.Net.IPAddress.TryParse(host, out _) ? host : null;
     }
 
     private string ComSummary()

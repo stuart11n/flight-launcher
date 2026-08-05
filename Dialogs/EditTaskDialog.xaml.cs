@@ -52,7 +52,9 @@ public sealed partial class EditTaskDialog : ContentDialog
         StopCommandBox.Text = _entry.StopCommand;
         StartUrlBox.Text = _entry.StartUrl;
         StopUrlBox.Text = _entry.StopUrl;
-        ShellyIpBox.Text = _entry.IpAddress;
+        ShellyIpBox.Text = string.IsNullOrWhiteSpace(_entry.IpAddress)
+            ? _entry.ResolveShellyIp()
+            : _entry.IpAddress;
         ComPortBox.Text = _entry.ComPort;
         ComBaudBox.Value = _entry.ComBaudRate < 0 ? 0 : _entry.ComBaudRate;
         ComStartBox.Text = _entry.ComStartText;

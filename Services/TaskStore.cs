@@ -139,6 +139,18 @@ public sealed class TaskStore
             changed = true;
         }
 
+        // Older Shelly rows kept the IP only in startUrl/stopUrl after kind conversion.
+        foreach (var mode in settings.Modes)
+        {
+            foreach (var task in mode.Tasks)
+            {
+                if (task.TryMigrateShellyIpFromUrls())
+                {
+                    changed = true;
+                }
+            }
+        }
+
         return changed;
     }
 }

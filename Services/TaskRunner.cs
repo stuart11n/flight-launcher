@@ -209,14 +209,14 @@ public sealed class TaskRunner
 
     private static async Task<string> StartShellyAsync(TaskEntry task, CancellationToken ct)
     {
-        var url = BuildShellyUrl(task.IpAddress, turnOn: true);
+        var url = BuildShellyUrl(task.ResolveShellyIp(), turnOn: true);
         using var response = await Http.GetAsync(url, ct).ConfigureAwait(false);
         return $"SHELLY [{task.Name}] GET {url} -> {(int)response.StatusCode}";
     }
 
     private static async Task<string> StopShellyAsync(TaskEntry task, CancellationToken ct)
     {
-        var url = BuildShellyUrl(task.IpAddress, turnOn: false);
+        var url = BuildShellyUrl(task.ResolveShellyIp(), turnOn: false);
         using var response = await Http.GetAsync(url, ct).ConfigureAwait(false);
         return $"SHELLY [{task.Name}] GET {url} -> {(int)response.StatusCode}";
     }
